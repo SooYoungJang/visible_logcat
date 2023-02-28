@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="MenuLayout">
+<!--        <attr name="setRightImageView" format="boolean" />-->
+<!--        <attr name="setLeftImageView" format="boolean" />-->
+<!--        <attr name="setRightCheckBox" format="boolean" />-->
+<!--        <attr name="setLeftCheckBox" format="boolean" />-->
+<!--        <attr name="setRightTextView" format="boolean" />-->
+<!--        <attr name="setLeftTextView" format="boolean" />-->
+        <attr name="setRightImageBackgroundDrawable" format="reference|integer" />
+        <attr name="setRightImageBackgroundDrawableResource" format="reference|integer" />
+        <attr name="setLeftImageBackgroundDrawable" format="reference|integer" />
+        <attr name="setLeftImageBackgroundDrawableResource" format="reference|integer" />
+        <attr name="setRightCheckBoxBackgroundDrawable" format="reference|integer" />
+        <attr name="setRightCheckBoxBackgroundDrawableResource" format="reference|integer" />
+        <attr name="setLeftCheckBoxBackgroundDrawable" format="reference|integer" />
+        <attr name="setLeftCheckBoxBackgroundDrawableResource" format="reference|integer" />
+        <attr name="setRightText" format="reference|string" />
+        <attr name="setRightTextResource" format="reference|string" />
+        <attr name="setLeftText" format="reference|string" />
+        <attr name="setLeftTextResource" format="reference|string" />
+        <attr name="setRightTextSize" format="reference|float" />
+        <attr name="setLeftTextSize" format="reference|float" />
+
+    </declare-styleable>
+</resources>
