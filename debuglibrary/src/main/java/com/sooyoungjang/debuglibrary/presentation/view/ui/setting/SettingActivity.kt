@@ -77,12 +77,6 @@ internal class SettingActivity : AppCompatActivity() {
                         cbBackground.isChecked = it.darkBackground
                         spTextSize.setSelection(it.curTextSizeListPosition, false)
                     }
-
-//                    when (val state = it) {
-//                        SettingContract.SettingState.Init -> {
-//                            initView()
-//                        }
-//                    }
                 }
             }
         }
