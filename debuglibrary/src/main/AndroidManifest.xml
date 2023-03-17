@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.debuglibrary">
+
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <application>
+        <activity
+            android:name="com.eddy.debuglibrary.presentation.view.ui.search.SearchActivity"
+            android:theme="@style/Theme.Search.Dialog"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name="com.eddy.debuglibrary.presentation.view.ui.setting.SettingActivity"
+            android:exported="false">
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="" />
+        </activity>
+
+        <activity
+            android:name="com.eddy.debuglibrary.presentation.view.ui.permission.PermissionActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Permission.Dialog" />
+
+        <service
+            android:name="com.eddy.debuglibrary.presentation.view.ui.overlay.OverlayTaskService"
+            android:enabled="true"
+            android:exported="true" />
+    </application>
+
+</manifest>

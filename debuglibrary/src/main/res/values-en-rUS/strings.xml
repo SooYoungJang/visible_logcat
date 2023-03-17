@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="log">Log</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
+    <string name="never_see_again">Never See Again</string>
+    <string name="request_permission">Allow Permission Request</string>
+    <string name="setting">Setting</string>
+    <string name="change_background_color">Change Background Color</string>
+    <string name="change_text_size">Change Text Size</string>
+    <string name="save_filter_keyword">Save Filter Keyword</string>
+    <string name="add_to_search_filter">Add To Search Filter</string>
+    <string name="enter_search_keyword">Enter Search Keyword</string>
+</resources>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/default_app_color"
+    tools:context="com.eddy.debuglibrary.presentation.view.ui.setting.SettingActivity">
+
+
+    <TextView
+        android:id="@+id/tv_background"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="28dp"
+        android:text="@string/change_background_color"
+        android:textColor="@color/default_text_color"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <CheckBox
+        android:id="@+id/cb_background"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/snaps_checkbox"
+        android:button="@null"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.905"
+        app:layout_constraintStart_toEndOf="@+id/tv_background"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_text_size"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="48dp"
+        android:text="@string/change_text_size"
+        android:textColor="@color/default_text_color"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_background" />
+
+    <androidx.appcompat.widget.AppCompatSpinner
+        android:id="@+id/sp_text_size"
+        android:layout_width="100dp"
+        android:layout_height="20dp"
+        android:layout_marginTop="36dp"
+        android:dropDownWidth="100dp"
+        android:gravity="center"
+        android:textAlignment="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.914"
+        app:layout_constraintStart_toEndOf="@+id/tv_text_size"
+        app:layout_constraintTop_toBottomOf="@+id/cb_background" />
+
+    <TextView
+        android:id="@+id/tv_filter_keyword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="44dp"
+        android:text="@string/save_filter_keyword"
+        android:textColor="@color/default_text_color"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_text_size" />
+
+    <EditText
+        android:id="@+id/et_input_filter_keyword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:ellipsize="end"
+        android:ems="10"
+        android:hint="@string/add_to_search_filter"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:singleLine="true"
+        android:textColor="@color/default_text_color"
+        android:textSize="13sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.575"
+        app:layout_constraintStart_toEndOf="@+id/tv_filter_keyword"
+        app:layout_constraintTop_toBottomOf="@+id/sp_text_size" />
+
+    <ImageView
+        android:id="@+id/iv_add_filter_keyword"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="40dp"
+        android:clickable="true"
+        android:src="@drawable/add"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/et_input_filter_keyword"
+        app:layout_constraintTop_toBottomOf="@+id/sp_text_size" />
+
+
+    <TextView
+        android:id="@+id/tv_filter_keyword_list"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="44dp"
+        android:text="@string/save_filter_keyword"
+        android:textColor="@color/default_text_color"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_filter_keyword" />
+
+    <com.airbnb.epoxy.EpoxyRecyclerView
+        android:id="@+id/rv_filter_keyword_list"
+        android:layout_width="188dp"
+        android:layout_height="118dp"
+        android:layout_marginTop="24dp"
+        android:textColor="@color/default_text_color"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.836"
+        app:layout_constraintStart_toEndOf="@+id/tv_filter_keyword"
+        app:layout_constraintTop_toBottomOf="@+id/et_input_filter_keyword" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
