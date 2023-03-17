@@ -34,7 +34,6 @@ internal class SettingViewModel(
             }
             is SettingContract.Event.OnItemListSelectedPosition -> {
                 sharedPreferencesUtil.putInt(Constants.SharedPreferences.EDDY_LOG_TEXT_SIZE, event.position)
-                Log.d("Test","aaaaaaa ${event.position}")
                 setState { copy(curTextSizeListPosition = event.position) }
             }
         }
