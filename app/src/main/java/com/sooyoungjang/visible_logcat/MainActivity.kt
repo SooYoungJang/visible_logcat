@@ -2,7 +2,7 @@ package com.sooyoungjang.visible_logcat
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import com.eddy.debuglibrary.createDebugTool
+import com.sooyoungjang.debuglibrary.createDebugTool
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
