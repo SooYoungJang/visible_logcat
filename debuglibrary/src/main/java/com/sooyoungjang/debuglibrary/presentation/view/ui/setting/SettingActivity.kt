@@ -3,6 +3,7 @@ package com.sooyoungjang.debuglibrary.presentation.view.ui.setting
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.widget.AdapterView
@@ -14,16 +15,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.debuglibrary.R
+import com.example.debuglibrary.databinding.ActivitySettingBinding
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import com.sooyoungjang.debuglibrary.di.AppContainer
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.epoxy.LogKeywordController
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.epoxy.LogKeywordModel
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.viewmodel.SettingViewModel
 import com.sooyoungjang.debuglibrary.util.Constants
 import com.sooyoungjang.debuglibrary.util.Constants.SharedPreferences.Companion.EDDY_LOG_FILTER_KEYWORD
-import com.example.debuglibrary.R
-import com.example.debuglibrary.databinding.ActivitySettingBinding
-import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.greenrobot.eventbus.EventBus
@@ -42,9 +43,7 @@ internal class SettingActivity : AppCompatActivity() {
     private val controller: LogKeywordController by lazy { LogKeywordController() }
     private val viewModel: SettingViewModel by lazy { SettingViewModel(appContainer.sharedPreferencesUtil) }
     private var arrayListPrefs = ArrayList<String>() // 저장할 ArrayList
-    private var stringPrefs : String? = null // 저장할 때 사용할 문자열 변수
-
-    var userSelect = false
+    private var stringPrefs: String? = null // 저장할 때 사용할 문자열 변수
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,17 +52,18 @@ internal class SettingActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setupSpinner()
+
         binding.cbBackground.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setEvent(SettingContract.Event.OnDarkBackgroundClick(isChecked))
         }
 
-
         binding.spTextSize.onItemSelectedListener = object : OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 viewModel.setEvent(SettingContract.Event.OnItemListSelectedPosition(position))
+
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) { }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
         initObservers()
@@ -75,7 +75,7 @@ internal class SettingActivity : AppCompatActivity() {
                 viewModel.uiState.collect {
                     with(binding) {
                         cbBackground.isChecked = it.darkBackground
-//                        spTextSize.setSelection(it.curTextSizeListPosition)
+                        spTextSize.setSelection(it.curTextSizeListPosition, false)
                     }
 
 //                    when (val state = it) {
@@ -100,7 +100,6 @@ internal class SettingActivity : AppCompatActivity() {
 
 
     private fun initView() {
-        setupSpinner()
         setupFilterTextView()
         setupFilterKeywordList()
         setOnClickAddBtn()
@@ -109,17 +108,6 @@ internal class SettingActivity : AppCompatActivity() {
     private fun setupSpinner() {
         val textSizes = resources.getStringArray(R.array.text_size_array)
         binding.spTextSize.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, textSizes)
-        binding.spTextSize.setSelection(0, false)
-
-//        binding.spTextSize.setSelection(sharedPreferences.getInt(EDDY_LOG_TEXT_SIZE, 10))
-//        binding.spTextSize.onItemSelectedListener = object : OnItemSelectedListener {
-//            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-//                sharedPreferences.edit().putInt(EDDY_LOG_TEXT_SIZE, position).apply()
-//            }
-//
-//            override fun onNothingSelected(parent: AdapterView<*>?) { }
-//
-//        }
     }
 
     private fun setOnClickAddBtn() {
@@ -146,7 +134,7 @@ internal class SettingActivity : AppCompatActivity() {
     }
 
     private fun saveFilterKeywordList(keyword: String) {
-        if(!arrayListPrefs.contains(keyword)) {
+        if (!arrayListPrefs.contains(keyword)) {
             arrayListPrefs.add(0, keyword)
             stringPrefs = GsonBuilder().create().toJson(
                 arrayListPrefs,
@@ -164,9 +152,9 @@ internal class SettingActivity : AppCompatActivity() {
     private fun getFilterKeywordList(): List<String> {
         stringPrefs = sharedPreferences.getString(EDDY_LOG_FILTER_KEYWORD, null)
 
-        if(stringPrefs != null && stringPrefs != "[]"){
+        if (stringPrefs != null && stringPrefs != "[]") {
             arrayListPrefs = GsonBuilder().create().fromJson(
-                stringPrefs, object: TypeToken<ArrayList<String>>(){}.type
+                stringPrefs, object : TypeToken<ArrayList<String>>() {}.type
             )
             return arrayListPrefs
         }
@@ -182,7 +170,7 @@ internal class SettingActivity : AppCompatActivity() {
 
     private fun deleteSearchKeyword(keyword: String) {
 
-        arrayListPrefs = getFilterKeywordList().toMutableList().also { it.remove(keyword)} as ArrayList<String>
+        arrayListPrefs = getFilterKeywordList().toMutableList().also { it.remove(keyword) } as ArrayList<String>
 
         stringPrefs = GsonBuilder().create().toJson(
             arrayListPrefs,
