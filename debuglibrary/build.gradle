@@ -21,7 +21,7 @@ def getVersion() {
 }
 
 ext {
-    PUBLISH_GROUP_ID = 'io.github.snaps-eddy'
+    PUBLISH_GROUP_ID = 'io.github.sooyoungjang'
     PUBLISH_VERSION = getVersion()
     PUBLISH_ARTIFACT_ID = 'visibledebugtool'
 }

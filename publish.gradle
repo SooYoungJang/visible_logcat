@@ -2,16 +2,16 @@
 ext {
 
     PUBLISH_DESCRIPTION = 'Android library for visible logcat and more.'
-    PUBLISH_URL = 'https://github.com/snaps-eddy/visible_debug_tool'
+    PUBLISH_URL = 'https://github.com/SooYoungJang/visible_logcat'
     PUBLISH_LICENSE_NAME = 'Apache Licensee 2.0'
-    PUBLISH_LICENSE_URL = 'https://github.com/snaps-eddy/visible_debug_tool/blob/master/LICENSE'
+    PUBLISH_LICENSE_URL = 'https://github.com/SooYoungJang/visible_logcat/blob/master/LICENSE'
 
-    PUBLISH_DEVELOPER_ID = 'JangEddy'
-    PUBLISH_DEVELOPER_NAME = 'Jang Eddy'
+    PUBLISH_DEVELOPER_ID = 'JangSooYoung'
+    PUBLISH_DEVELOPER_NAME = 'Jang Soo Young'
     PUBLISH_DEVELOPER_EMAIL = 'jsy10835@naver.com'
 
-    PUBLISH_SCM_CONNECTION = 'scm:git:github.com/snaps-eddy/visible_debug_tool.git'
-    PUBLISH_SCM_DEVELOPER_CONNECTION = 'scm:git:ssh://github.com/snaps-eddy/visible_debug_tool.git'
-    PUBLISH_SCM_URL = 'https://github.com/snaps-eddy/visible_debug_tool/tree/master'
+    PUBLISH_SCM_CONNECTION = 'scm:git:github.com/SooYoungJang/visible_logcat.git'
+    PUBLISH_SCM_DEVELOPER_CONNECTION = 'scm:git:ssh://github.com/SooYoungJang/visible_logcat.git'
+    PUBLISH_SCM_URL = 'https://github.com/SooYoungJang/visible_logcat/tree/master'
 
 }
