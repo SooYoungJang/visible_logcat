@@ -22,7 +22,7 @@ internal class LogRepositoryImpl(
             "WifiMulticast", "WifiHW", "MtpService", "PushClient", "ViewRootImpl", "InputTransport", "InputMethodManager", "mali|TextView", "activityThread", "TrafficStats",
             "tagSocket", "ConversionRepoter", "nativeloader", "DecorView", "BLASTBufferQueue", "OpenGLRenderer", "chromium", "CCodec", "Codec2", "ReflectedParamUpdater",
             "ColorUtils", "MediaCodec", "SurfaceUtils", "CCodecBufferChannel", "BufferQueueProducer", "cr_MediaCodecBridge", "BufferPoolAccessor","beginning of main", "StudioTransport",
-            "SmartClipRemoteRequestDispatcher","hw-BpHwBinder","choreogra","InsetsController", "OverlayTaskView", "isFocusInDesktop", "webling_debug_tool"
+            "SmartClipRemoteRequestDispatcher","hw-BpHwBinder","choreogra","InsetsController", "OverlayTaskView", "isFocusInDesktop"
         )
 
     override fun getLogcatData(filterWord: String): Flow<List<LogModel>> {
