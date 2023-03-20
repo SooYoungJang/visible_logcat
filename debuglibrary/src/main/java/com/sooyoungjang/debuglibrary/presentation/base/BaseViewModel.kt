@@ -10,8 +10,8 @@ import kotlin.coroutines.CoroutineContext
 
 internal abstract class BaseViewModel<Event : UiEvent, State : UiState, Effect : UiEffect> : ViewModel() {
 
-    private val initialState: State by lazy { createInitialState() }
-    abstract fun createInitialState(): State
+    private val initialState: State by lazy { createIdleState() }
+    abstract fun createIdleState(): State
 
     private val coroutineContext: CoroutineContext = Dispatchers.IO
 

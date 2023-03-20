@@ -77,7 +77,7 @@ internal class SettingActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.effect.distinctUntilChanged().collect { effect ->
-                    when(effect) {
+                    when (effect) {
                         SettingContract.SideEffect.OnBackPressed -> {
                             EventBus.getDefault().post(SettingEvent.OnBackPress)
                             finish()

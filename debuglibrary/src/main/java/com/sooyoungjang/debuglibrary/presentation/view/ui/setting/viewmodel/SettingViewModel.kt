@@ -1,6 +1,5 @@
 package com.sooyoungjang.debuglibrary.presentation.view.ui.setting.viewmodel
 
-import android.util.Log
 import com.sooyoungjang.debuglibrary.presentation.base.BaseViewModel
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingActivity
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingContract
@@ -12,17 +11,22 @@ internal class SettingViewModel(
     private val sharedPreferencesUtil: SharedPreferencesUtil
 ) : BaseViewModel<SettingContract.Event, SettingContract.State, SettingContract.SideEffect>(), SettingActivity.Callback {
 
-    override fun createInitialState(): SettingContract.State {
-        return SettingContract.State.initial()
+    override fun createIdleState(): SettingContract.State {
+        return SettingContract.State.idle()
     }
 
     init {
+        initData()
+    }
+
+    private fun initData() {
         val textSizePosition = sharedPreferencesUtil.getTextSizePosition()
         val keywords = sharedPreferencesUtil.getFilterKeywordList().map { LogKeywordModel(content = it, callback = this) }
         val isDarkBackground = sharedPreferencesUtil.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND)
 
         setState { copy(curTextSizeListPosition = textSizePosition, filterKeywordModels = keywords, darkBackground = isDarkBackground) }
     }
+
 
     override fun handleEvent(event: SettingContract.Event) {
         when (event) {

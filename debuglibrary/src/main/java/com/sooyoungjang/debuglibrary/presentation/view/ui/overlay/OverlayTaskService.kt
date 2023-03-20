@@ -14,8 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.sooyoungjang.debuglibrary.di.AppContainer
 import com.sooyoungjang.debuglibrary.di.DiManager
-import com.sooyoungjang.debuglibrary.presentation.viewmodel.OverlayContract
-import com.sooyoungjang.debuglibrary.presentation.viewmodel.OverlayTaskViewModel
+import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.viewmodel.OverlayTaskViewModel
 import com.sooyoungjang.debuglibrary.util.Constants
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken

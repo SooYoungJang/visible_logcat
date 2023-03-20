@@ -1,5 +1,6 @@
 package com.sooyoungjang.debuglibrary.presentation.view.ui.setting
 
+import android.util.Log
 import com.sooyoungjang.debuglibrary.presentation.base.UiEffect
 import com.sooyoungjang.debuglibrary.presentation.base.UiEvent
 import com.sooyoungjang.debuglibrary.presentation.base.UiState
@@ -20,7 +21,7 @@ internal class SettingContract {
         val darkBackground: Boolean
     ) : UiState {
         companion object Factory {
-            fun initial(): State {
+            fun idle(): State {
                 return State(
                     curTextSizeListPosition = 0,
                     filterKeywordModels = emptyList(),

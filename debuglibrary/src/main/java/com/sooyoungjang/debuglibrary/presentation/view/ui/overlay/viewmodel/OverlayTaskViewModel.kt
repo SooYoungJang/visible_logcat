@@ -1,4 +1,4 @@
-package com.sooyoungjang.debuglibrary.presentation.viewmodel
+package com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.sooyoungjang.debuglibrary.domain.log.usecase.ClearLogUseCase
@@ -6,6 +6,7 @@ import com.sooyoungjang.debuglibrary.domain.log.usecase.DeleteLogUseCase
 import com.sooyoungjang.debuglibrary.domain.log.usecase.GetLogcatUseCase
 import com.sooyoungjang.debuglibrary.presentation.base.BaseViewModel
 import com.sooyoungjang.debuglibrary.presentation.view.model.LogUiModel
+import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.OverlayContract
 import com.sooyoungjang.debuglibrary.util.ResourceProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,7 +42,7 @@ internal class OverlayTaskViewModel(
         }
     }
 
-    override fun createInitialState(): OverlayContract.State {
+    override fun createIdleState(): OverlayContract.State {
         return OverlayContract.State(OverlayContract.LogsState.Idle)
     }
 
