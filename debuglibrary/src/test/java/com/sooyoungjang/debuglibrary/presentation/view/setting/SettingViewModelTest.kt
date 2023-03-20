@@ -11,15 +11,16 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Rule
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Mockito.`when`
-import org.mockito.Mockito.mock
+import org.mockito.BDDMockito.given
 
 @ExperimentalCoroutinesApi
 @ExtendWith(MainCoroutineRule::class)
@@ -27,10 +28,7 @@ class SettingViewModelTest {
     private lateinit var viewModel: SettingViewModel
     val fixture = kotlinFixture()
 
-    private val sharedPreferencesUtil: SharedPreferencesUtil = mockk(relaxed = true) {
-        every { getTextSizePosition() } returns fixture()
-        every { getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND) } returns fixture()
-    }
+    private val sharedPreferencesUtil: SharedPreferencesUtil = mockk(relaxed = true)
 
     @ExperimentalCoroutinesApi
     @get:Rule
@@ -42,10 +40,28 @@ class SettingViewModelTest {
     }
 
     @Test
-    fun `viewModel 의 초기 State 값은 initial 이다 `() {
-        val initialState = viewModel.createInitialState()
+    fun `viewModel 의 초기 State 값은 idle 이다 `() {
+        val idleState = viewModel.createIdleState()
 
-        assertEquals(SettingContract.State.initial(), initialState)
+        assertEquals(SettingContract.State.idle(), idleState)
+    }
+
+
+    @Test
+    fun `viewModel 의 init 이 완료 되면 저장 데이터로 상태를 변경 한다`() {
+        viewModel.createIdleState()
+
+        val expectedState = SettingContract.State.idle().copy(
+            curTextSizeListPosition = sharedPreferencesUtil.getTextSizePosition(),
+            filterKeywordModels = sharedPreferencesUtil.getFilterKeywordList().map { LogKeywordModel(content = it, callback = viewModel) },
+            darkBackground = sharedPreferencesUtil.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND)
+        )
+
+        verify { sharedPreferencesUtil.getTextSizePosition() }
+        verify { sharedPreferencesUtil.getFilterKeywordList() }
+        verify { sharedPreferencesUtil.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND) }
+
+        assertEquals(expectedState, viewModel.currentState)
     }
 
     @Test
@@ -114,7 +130,7 @@ class SettingViewModelTest {
 
     @Test
     fun ` 텍스트 사이즈를 변경하면 선택한 텍스트의 position 사이즈로 textSizeListPosition을 변경 한다 `() {
-        val textSizePosition = fixture(range = listOf(0,1,2,3,4,5,6,7,8))
+        val textSizePosition = fixture(range = listOf(0, 1, 2, 3, 4, 5, 6, 7, 8))
         val event = SettingContract.Event.OnItemListSelectedPosition(textSizePosition)
 
         viewModel.handleEvent(event)

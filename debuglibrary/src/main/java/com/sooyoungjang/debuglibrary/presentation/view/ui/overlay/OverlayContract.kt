@@ -1,4 +1,4 @@
-package com.sooyoungjang.debuglibrary.presentation.viewmodel
+package com.sooyoungjang.debuglibrary.presentation.view.ui.overlay
 
 import com.sooyoungjang.debuglibrary.presentation.base.UiEffect
 import com.sooyoungjang.debuglibrary.presentation.base.UiEvent
