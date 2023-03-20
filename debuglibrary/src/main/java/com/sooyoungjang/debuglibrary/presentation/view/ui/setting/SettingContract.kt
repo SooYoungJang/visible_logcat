@@ -10,18 +10,20 @@ internal class SettingContract {
     sealed interface Event : UiEvent {
         data class OnDarkBackgroundClick(val isAllow: Boolean): Event
         data class OnItemListSelectedPosition(val position: Int): Event
+        data class OnAddFilterKeyword(val keyword: String): Event
+        object OnBackPressed: Event
     }
 
     data class State(
         val curTextSizeListPosition: Int,
-        val filterKeywords: List<LogKeywordModel>,
+        val filterKeywordModels: List<LogKeywordModel>,
         val darkBackground: Boolean
     ) : UiState {
         companion object Factory {
             fun initial(): State {
                 return State(
                     curTextSizeListPosition = 0,
-                    filterKeywords = emptyList(),
+                    filterKeywordModels = emptyList(),
                     darkBackground = false
                 )
             }
@@ -29,6 +31,6 @@ internal class SettingContract {
     }
 
     sealed interface SideEffect : UiEffect {
-        data class DeleteKeyword(val keyword: String) : SideEffect
+        object OnBackPressed: SideEffect
     }
 }

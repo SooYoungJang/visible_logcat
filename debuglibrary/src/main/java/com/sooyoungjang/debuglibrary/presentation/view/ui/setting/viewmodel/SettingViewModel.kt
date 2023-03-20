@@ -21,12 +21,11 @@ internal class SettingViewModel(
         val keywords = sharedPreferencesUtil.getFilterKeywordList().map { LogKeywordModel(content = it, callback = this) }
         val isDarkBackground = sharedPreferencesUtil.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND)
 
-        Log.d("test","aaaaaaa lk $textSizePosition")
-        setState { copy(curTextSizeListPosition = textSizePosition, filterKeywords = keywords ,darkBackground =  isDarkBackground) }
+        setState { copy(curTextSizeListPosition = textSizePosition, filterKeywordModels = keywords, darkBackground = isDarkBackground) }
     }
 
     override fun handleEvent(event: SettingContract.Event) {
-        when(event) {
+        when (event) {
             is SettingContract.Event.OnDarkBackgroundClick -> {
                 sharedPreferencesUtil.putBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND, event.isAllow)
 
@@ -36,11 +35,19 @@ internal class SettingViewModel(
                 sharedPreferencesUtil.putInt(Constants.SharedPreferences.EDDY_LOG_TEXT_SIZE, event.position)
                 setState { copy(curTextSizeListPosition = event.position) }
             }
+            is SettingContract.Event.OnAddFilterKeyword -> {
+                sharedPreferencesUtil.putFilterKeyword(keyword = event.keyword)
+                val keywordModels = sharedPreferencesUtil.getFilterKeywordList().map { LogKeywordModel(content = it, callback = this) }
+                setState { copy(filterKeywordModels = keywordModels) }
+            }
+            SettingContract.Event.OnBackPressed -> setEffect { SettingContract.SideEffect.OnBackPressed }
         }
     }
 
     private fun onClickDeleteKeyword(keyword: String) {
-        setEffect { SettingContract.SideEffect.DeleteKeyword(keyword) }
+        sharedPreferencesUtil.deleteFilterKeyword(keyword)
+        val keywordModels = sharedPreferencesUtil.getFilterKeywordList().map { LogKeywordModel(content = it, callback = this) }
+        setState { copy(filterKeywordModels = keywordModels) }
     }
 
     override val onClickDeleteKeyword: (keyword: String) -> Unit get() = ::onClickDeleteKeyword
