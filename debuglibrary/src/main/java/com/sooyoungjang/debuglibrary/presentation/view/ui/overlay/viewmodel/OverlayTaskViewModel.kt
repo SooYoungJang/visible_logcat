@@ -1,13 +1,20 @@
 package com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.viewmodel
 
+import android.R
+import android.widget.ArrayAdapter
 import androidx.lifecycle.viewModelScope
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import com.sooyoungjang.debuglibrary.domain.log.usecase.ClearLogUseCase
 import com.sooyoungjang.debuglibrary.domain.log.usecase.DeleteLogUseCase
 import com.sooyoungjang.debuglibrary.domain.log.usecase.GetLogcatUseCase
 import com.sooyoungjang.debuglibrary.presentation.base.BaseViewModel
 import com.sooyoungjang.debuglibrary.presentation.view.model.LogUiModel
-import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.OverlayContract
+import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.OverlayTaskContract
+import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.epoxy.LogKeywordModel
+import com.sooyoungjang.debuglibrary.util.Constants
 import com.sooyoungjang.debuglibrary.util.ResourceProvider
+import com.sooyoungjang.debuglibrary.util.SharedPreferencesUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.map
@@ -17,12 +24,13 @@ internal class OverlayTaskViewModel(
     private val getLogcatUseCase: GetLogcatUseCase,
     private val clearLogUseCase: ClearLogUseCase,
     private val deleteLogUseCase: DeleteLogUseCase,
+    private val sharedPreferencesUtil: SharedPreferencesUtil,
     private val resourceProvider: ResourceProvider,
-    ) : BaseViewModel<OverlayContract.Event, OverlayContract.State, OverlayContract.SideEffect>() {
+) : BaseViewModel<OverlayTaskContract.Event, OverlayTaskContract.State, OverlayTaskContract.SideEffect>() {
 
     private lateinit var job: Job
 
-    fun requestLogcats(searchTag: String) {
+    private fun requestLogcats(searchTag: String) {
         cancelJob()
         clearLog()
 
@@ -31,19 +39,44 @@ internal class OverlayTaskViewModel(
             getLogcatUseCase.invoke(params)
                 .map { it.map { LogUiModel(it.content, it.logLevel) } }
                 .collect {
-                    setEffect { OverlayContract.SideEffect.FetchLogs(it) }
+                    setEffect { OverlayTaskContract.SideEffect.FetchLogs(it) }
                 }
         }
     }
 
-    private fun cancelJob() {
-        if (this::job.isInitialized) {
-            job.cancel()
+    override fun createIdleState(): OverlayTaskContract.State {
+        return OverlayTaskContract.State.idle()
+    }
+
+    override fun handleEvent(event: OverlayTaskContract.Event) {
+        when (event) {
+            OverlayTaskContract.Event.OnOpenClick -> expandView()
+            is OverlayTaskContract.Event.OnCloseClick -> setState { OverlayTaskContract.State.idle() }
+            is OverlayTaskContract.Event.OnKeyWordItemClick -> requestLogcats(event.keyWord)
+            is OverlayTaskContract.Event.OnClearClick -> clearLog()
+            is OverlayTaskContract.Event.DeleteLog -> deleteLog()
         }
     }
 
-    override fun createIdleState(): OverlayContract.State {
-        return OverlayContract.State(OverlayContract.LogsState.Idle)
+    private fun expandView() {
+        val keywords = sharedPreferencesUtil.getFilterKeywordList()
+
+        setState {
+            copy(
+                expandView = true,
+                setting = true,
+                keywordTitle = true,
+                filterKeyword = true,
+                filterKeywordList = keywords,
+                searching = true,
+                trash = true,
+                zoom = true,
+                zoomChecked = false,
+                move = true,
+                close = true,
+                log = true
+            )
+        }
     }
 
     private fun clearLog() {
@@ -58,16 +91,9 @@ internal class OverlayTaskViewModel(
         }
     }
 
-    override fun handleEvent(event: OverlayContract.Event) {
-        when (event) {
-            is OverlayContract.Event.OnCloseClick -> setState { copy(logsState = OverlayContract.LogsState.Idle) }
-
-            is OverlayContract.Event.OnClickKeyWordItem -> requestLogcats(event.keyWord)
-
-            is OverlayContract.Event.OnClearClick -> clearLog()
-
-            is OverlayContract.Event.DeleteLog -> deleteLog()
-
+    private fun cancelJob() {
+        if (this::job.isInitialized) {
+            job.cancel()
         }
     }
 

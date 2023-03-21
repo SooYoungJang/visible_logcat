@@ -8,6 +8,7 @@ import android.content.res.Resources
 import android.graphics.PixelFormat
 import android.os.Build
 import android.util.AttributeSet
+import android.util.Log
 import android.view.*
 import android.view.View.OnTouchListener
 import android.widget.*
@@ -111,12 +112,18 @@ internal class OverlayTaskView @JvmOverloads constructor(
         }
     }
 
-    fun init() {
+    init {
         EventBus.getDefault().register(this@OverlayTaskView)
         setRv()
         setClickListener()
-        getFilterKeywordList()
+//        getFilterKeywordList()
     }
+//    fun init() {
+//        EventBus.getDefault().register(this@OverlayTaskView)
+//        setRv()
+//        setClickListener()
+//        getFilterKeywordList()
+//    }
 
     fun onSearchKeyword(keyword: String) {
         try {
@@ -176,7 +183,7 @@ internal class OverlayTaskView @JvmOverloads constructor(
                 globalUiModels = logController.currentData?.withIndex()?.filter { it.value.content.contains(globalSearchKeyword) }
                 globalPosition = globalUiModels?.findLast { it.index < globalPosition }?.index ?: throw IllegalStateException("Not found.")
                 rvLog.smoothScrollToPosition(globalPosition)
-            }catch (e: Exception) {
+            } catch (e: Exception) {
                 rvLog.smoothScrollToPosition(globalPosition)
                 Toast.makeText(context, "The end has been reached.", Toast.LENGTH_SHORT).show()
             }
@@ -201,9 +208,7 @@ internal class OverlayTaskView @JvmOverloads constructor(
             context.startActivity(intent)
         }
 
-        ivMove.setOnTouchListener(viewMoveListener)
         ivClose.setOnClickListener {
-            applyCollapseView()
             callback.onClickClose.invoke()
         }
 
@@ -213,7 +218,12 @@ internal class OverlayTaskView @JvmOverloads constructor(
             true
         }
 
-        tvLog.setOnClickListener { if (isExpandView.not()) applyExpandView() }
+        tvLog.setOnClickListener {
+            if (isExpandView.not()) callback.onClickOpen.invoke()
+
+//            if (isExpandView.not()) applyExpandView()
+//            if (isExpandView.not())
+        }
 
         cbZoom.setOnClickListener {
             if (cbZoom.isChecked) {
@@ -232,6 +242,25 @@ internal class OverlayTaskView @JvmOverloads constructor(
             isScrollBottom = !rvLog.canScrollVertically(1)
         }
         spLog.onItemSelectedListener = logSelectorListener
+
+        ivMove.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchX = event.rawX.toInt()
+                    touchY = event.rawY.toInt()
+                    viewX = rootViewParams.x
+                    viewY = rootViewParams.y
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val x = (event.rawX - touchX).toInt()
+                    val y = (event.rawY - touchY).toInt()
+                    rootViewParams.x = viewX + x
+                    rootViewParams.y = viewY + y
+                    windowManager.updateViewLayout(rootView, rootViewParams)
+                }
+            }
+            return@setOnTouchListener false
+        }
     }
 
     private fun getFilterKeywordList() {
@@ -246,65 +275,6 @@ internal class OverlayTaskView @JvmOverloads constructor(
             spLog.adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, logEvents)
         }
     }
-
-    private fun applyExpandView() {
-        getFilterKeywordList()
-        spLog.adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, logEvents)
-
-        rvLog.apply {
-            updateLayoutParams {
-                width = Resources.getSystem().displayMetrics.widthPixels
-                height = ((Resources.getSystem().displayMetrics.heightPixels / screenRatio))
-            }
-            isVisible = true
-        }
-
-        ivSetting.isVisible = true
-        isExpandView = true
-        ivClose.isVisible = true
-        spLog.isVisible = true
-        cbZoom.isVisible = true
-        cbZoom.isChecked = false
-        ivTrashLog.isVisible = true
-        ivSearch.isVisible = true
-
-        tvLog.text = logEvents[0]
-        spLog.setSelection(0)
-
-        val moveLayoutParams = ivMove.layoutParams as RelativeLayout.LayoutParams
-        moveLayoutParams.removeRule(RelativeLayout.RIGHT_OF)
-        moveLayoutParams.addRule(RelativeLayout.LEFT_OF, ivClose.id)
-        ivMove.layoutParams = moveLayoutParams
-
-        rootViewParams.width = WindowManager.LayoutParams.MATCH_PARENT
-        windowManager.updateViewLayout(rootView, rootViewParams)
-
-        callback.onClickTagItem.invoke("normal")
-    }
-
-    private fun applyCollapseView() {
-        ivSetting.isVisible = false
-        isExpandView = false
-        ivClose.isVisible = false
-        spLog.isVisible = false
-        rvLog.isVisible = false
-        cbZoom.isVisible = false
-        cbZoom.isChecked = true
-        ivTrashLog.isVisible = false
-        ivSearch.isVisible = false
-        llSearchTool.isVisible = false
-        tvLog.text = resources.getText(R.string.log)
-        rvLog.removeAllViewsInLayout()
-
-        val moveLayoutParams = ivMove.layoutParams as RelativeLayout.LayoutParams
-        moveLayoutParams.removeRule(RelativeLayout.LEFT_OF)
-        moveLayoutParams.addRule(RelativeLayout.RIGHT_OF, tvLog.id)
-        ivMove.layoutParams = moveLayoutParams
-
-        rootViewParams.width = WindowManager.LayoutParams.WRAP_CONTENT
-        windowManager.updateViewLayout(rootView, rootViewParams)
-    }
-
 
     @SuppressLint("ClickableViewAccessibility")
     private val viewMoveListener = OnTouchListener { _, event ->
@@ -325,6 +295,58 @@ internal class OverlayTaskView @JvmOverloads constructor(
             }
         }
         return@OnTouchListener false
+    }
+
+    fun setState(state: OverlayTaskContract.State) {
+        ivSetting.isVisible = state.setting
+        isExpandView = state.expandView
+        ivClose.isVisible = state.close
+        spLog.isVisible = state.filterKeyword
+        cbZoom.isVisible = state.zoom
+        cbZoom.isChecked = state.zoomChecked
+        ivTrashLog.isVisible = state.trash
+        ivSearch.isVisible = state.searching
+        llSearchTool.isVisible = state.searchLayout
+        ivMove.isVisible = state.move
+        tvLog.isVisible = state.keywordTitle
+
+        if (state.filterKeyword) spLog.adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, state.filterKeywordList)
+        if (state.log) {
+            rvLog.apply {
+                updateLayoutParams {
+                    width = Resources.getSystem().displayMetrics.widthPixels
+                    height = ((Resources.getSystem().displayMetrics.heightPixels / screenRatio))
+                }
+                isVisible = true
+            }
+        } else {
+            rvLog.apply {
+                isVisible = false
+                removeAllViewsInLayout()
+            }
+        }
+
+        spLog.setSelection(state.keywordSelectedPosition)
+
+        if (state.expandView) {
+            tvLog.text = state.filterKeywordList[0]
+            val moveLayoutParams = ivMove.layoutParams as RelativeLayout.LayoutParams
+            moveLayoutParams.removeRule(RelativeLayout.RIGHT_OF)
+            moveLayoutParams.addRule(RelativeLayout.LEFT_OF, ivClose.id)
+            ivMove.layoutParams = moveLayoutParams
+            rootViewParams.width = WindowManager.LayoutParams.MATCH_PARENT
+            callback.onClickTagItem.invoke("normal")
+        } else {
+            tvLog.text = state.logTitle
+            val moveLayoutParams = ivMove.layoutParams as RelativeLayout.LayoutParams
+            moveLayoutParams.removeRule(RelativeLayout.LEFT_OF)
+            moveLayoutParams.addRule(RelativeLayout.RIGHT_OF, tvLog.id)
+            ivMove.layoutParams = moveLayoutParams
+            rootViewParams.width = WindowManager.LayoutParams.WRAP_CONTENT
+        }
+
+        logEvents = state.filterKeywordList
+        windowManager.updateViewLayout(rootView, rootViewParams)
     }
 
     @Subscribe

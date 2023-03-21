@@ -31,7 +31,7 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
     }
 
     private val appContainer: AppContainer by lazy { DiManager.getInstance(this).appContainer }
-    private val viewModel: OverlayTaskViewModel by lazy { OverlayTaskViewModel(appContainer.getLogcatUseCase, appContainer.clearLogUseCase, appContainer.deleteLogUseCase, appContainer.resourceProvider) }
+    private val viewModel: OverlayTaskViewModel by lazy { OverlayTaskViewModel(appContainer.getLogcatUseCase, appContainer.clearLogUseCase, appContainer.deleteLogUseCase, appContainer.sharedPreferencesUtil, appContainer.resourceProvider) }
     private val sharedPreferences: SharedPreferences by lazy {getSharedPreferences(Constants.SharedPreferences.EDDY_DEBUG_TOOL, Context.MODE_PRIVATE)}
 
     private val binder = OverlayDebugToolPopUpBinder()
@@ -67,12 +67,7 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect {
-                    when (val state = it.logsState) {
-                        OverlayContract.LogsState.Idle -> {
-                            onClickDelete()
-                            view.init()
-                        }
-                    }
+                    view.setState(it)
                 }
             }
         }
@@ -81,7 +76,7 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.effect.distinctUntilChanged().collect {
                     when (it) {
-                        is OverlayContract.SideEffect.FetchLogs -> view.addLogTextView(it.logs)
+                        is OverlayTaskContract.SideEffect.FetchLogs -> view.addLogTextView(it.logs)
                     }
                 }
             }
@@ -110,11 +105,11 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
     }
 
     private fun onClickClose() {
-        viewModel.setEvent(OverlayContract.Event.OnCloseClick)
+        viewModel.setEvent(OverlayTaskContract.Event.OnCloseClick)
     }
 
     private fun onClickTagItem(tag: String) {
-        viewModel.setEvent(OverlayContract.Event.OnClickKeyWordItem(tag))
+        viewModel.setEvent(OverlayTaskContract.Event.OnKeyWordItemClick(tag))
     }
 
     private fun onLongClickCloseService() {
@@ -122,7 +117,11 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
     }
 
     private fun onClickDelete() {
-        viewModel.setEvent(OverlayContract.Event.DeleteLog)
+        viewModel.setEvent(OverlayTaskContract.Event.DeleteLog)
+    }
+
+    private fun onClickTitle() {
+        viewModel.setEvent(OverlayTaskContract.Event.OnOpenClick)
     }
 
     override fun onDestroy() {
@@ -131,6 +130,7 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
         stopSelf()
     }
 
+    override val onClickOpen: () -> Unit = ::onClickTitle
     override val onClickClose: () -> Unit = ::onClickClose
     override val onClickTagItem: (tag: String) -> Unit = ::onClickTagItem
     override val onLongClickCloseService: () -> Unit = ::onLongClickCloseService
