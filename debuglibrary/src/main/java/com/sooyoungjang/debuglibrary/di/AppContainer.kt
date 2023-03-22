@@ -31,7 +31,8 @@ internal class AppContainer(context: Context) {
 
     private val logRepository: LogRepository by lazy { LogRepositoryImpl(logRemoteDataSource, logLocalDataSource) }
 
-    val resourceProvider: ResourceProvider by lazy { ResourceProviderImpl(context.resources) }
+
+    val resourceProvider: ResourceProvider by lazy { ResourceProviderImpl(context.resources)  }
     val getLogcatUseCase: GetLogcatUseCase by lazy { GetLogcatUseCase(logRepository) }
     val clearLogUseCase: ClearLogUseCase by lazy { ClearLogUseCase(logRepository) }
     val deleteLogUseCase: DeleteLogUseCase by lazy { DeleteLogUseCase(logRepository) }
