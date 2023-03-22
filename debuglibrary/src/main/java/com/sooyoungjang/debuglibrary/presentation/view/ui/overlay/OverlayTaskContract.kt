@@ -1,11 +1,9 @@
 package com.sooyoungjang.debuglibrary.presentation.view.ui.overlay
 
-import android.view.WindowInsets.Side
 import com.sooyoungjang.debuglibrary.presentation.base.UiEffect
 import com.sooyoungjang.debuglibrary.presentation.base.UiEvent
 import com.sooyoungjang.debuglibrary.presentation.base.UiState
 import com.sooyoungjang.debuglibrary.presentation.view.model.LogUiModel
-import kotlin.Error
 
 internal class OverlayTaskContract {
 
@@ -14,11 +12,12 @@ internal class OverlayTaskContract {
         object OnCloseClick: Event
         object OnClearClick: Event
         object DeleteLog: Event
-        data class OnKeywordItemClick(val keyWord: String) : Event
-        data class OnBackPressedClickFromSetting(val keyWord: String) : Event
-        data class OnSearchClick(val searchKeyword: String ,val logUiModels: List<LogUiModel>?): Event
-        data class OnPageUpClick(val logUiModels: List<LogUiModel>?, val currentPosition: Int): Event
-        data class OnPageDownClick(val logUiModels: List<LogUiModel>?, val currentPosition: Int): Event
+        data class OnCollectLog(val keyword: String): Event
+        data class OnKeywordItemClick(val position: Int) : Event
+        object OnBackPressedClickFromSetting : Event
+        data class OnSearchClick(val logUiModels: List<LogUiModel>?, val keyword: String): Event
+        data class OnPageUpClick(val logUiModels: List<LogUiModel>?, val keyword:String, val currentPosition: Int): Event
+        data class OnPageDownClick(val logUiModels: List<LogUiModel>?, val keyword: String, val currentPosition: Int): Event
     }
 
     data class State(
@@ -27,8 +26,8 @@ internal class OverlayTaskContract {
         val keywordTitle: Boolean,
         val filterKeyword: Boolean,
         val filterKeywordList: List<String>,
+        val filterKeywordTitle: String,
         val searching: Boolean,
-        val searchKeyword: String,
         val searchLayout: Boolean,
         val trash: Boolean,
         val zoom: Boolean,
@@ -47,8 +46,8 @@ internal class OverlayTaskContract {
                     keywordTitle = true,
                     filterKeyword = false,
                     filterKeywordList = listOf(),
+                    filterKeywordTitle = "",
                     searching = false,
-                    searchKeyword = "",
                     searchLayout = false,
                     trash = false,
                     zoom = false,
@@ -70,6 +69,7 @@ internal class OverlayTaskContract {
         data class FetchLogs(val logs : List<LogUiModel>): SideEffect
         data class SearchLog(val keyword: String, val position: Int): SideEffect
         data class ScrollPosition(val position: Int): SideEffect
+        data class BackPressed(val filterKeywordList: List<String>, val backgroundColor: Int): SideEffect
 
         sealed interface Error: SideEffect {
             data class NotFoundLog(val message: String): Error
