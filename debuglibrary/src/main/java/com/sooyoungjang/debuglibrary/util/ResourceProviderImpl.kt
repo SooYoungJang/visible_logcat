@@ -28,11 +28,6 @@ class ResourceProviderImpl (
         return resources.getString(resId, *args)
     }
 
-    override fun getStatusHeight(): Int {
-        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
-        return if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
-    }
-
     override fun getDrawable(resId: Int, theme: Resources.Theme?): Drawable {
         return resources.getDrawable(resId, theme)
     }

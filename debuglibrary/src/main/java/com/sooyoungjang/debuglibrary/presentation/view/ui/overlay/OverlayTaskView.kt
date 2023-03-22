@@ -3,14 +3,11 @@ package com.sooyoungjang.debuglibrary.presentation.view.ui.overlay
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.res.Resources
 import android.graphics.PixelFormat
 import android.os.Build
 import android.util.AttributeSet
-import android.util.Log
 import android.view.*
-import android.view.View.OnTouchListener
 import android.widget.*
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -18,16 +15,12 @@ import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.LifecycleService
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.airbnb.epoxy.EpoxyRecyclerView
+import com.example.debuglibrary.R
 import com.sooyoungjang.debuglibrary.presentation.view.model.LogUiModel
 import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.epoxy.LogController
 import com.sooyoungjang.debuglibrary.presentation.view.ui.search.SearchActivity
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingActivity
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingEvent
-import com.sooyoungjang.debuglibrary.util.Constants
-import com.sooyoungjang.debuglibrary.util.Constants.SharedPreferences.Companion.EDDY_LOG_FILTER_KEYWORD
-import com.example.debuglibrary.R
-import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 
@@ -38,7 +31,6 @@ internal class OverlayTaskView @JvmOverloads constructor(
     private val callback: OverlayTaskCallback
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
-    private val sharedPreferences: SharedPreferences by lazy { context.getSharedPreferences(Constants.SharedPreferences.EDDY_DEBUG_TOOL, Context.MODE_PRIVATE) }
     private val rootView: RelativeLayout by lazy { inflate.inflate(R.layout.view_in_overlay_popup, null) as RelativeLayout }
     private val windowManager: WindowManager by lazy { context.getSystemService(LifecycleService.WINDOW_SERVICE) as WindowManager }
     private val rootViewParams: WindowManager.LayoutParams by lazy {
@@ -47,7 +39,6 @@ internal class OverlayTaskView @JvmOverloads constructor(
         } else {
             WindowManager.LayoutParams.TYPE_PHONE
         }
-
         WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -56,7 +47,6 @@ internal class OverlayTaskView @JvmOverloads constructor(
             PixelFormat.TRANSLUCENT
         )
     }
-
 
     private var touchX = 0
     private var touchY = 0
@@ -85,75 +75,53 @@ internal class OverlayTaskView @JvmOverloads constructor(
     private val tvSearchKeyword: TextView by lazy { rootView.findViewById(R.id.tv_search_keyword) }
     private val rvLog: EpoxyRecyclerView by lazy { rootView.findViewById(R.id.rv_logs) }
 
-    private var globalUiModels: List<IndexedValue<LogUiModel>>? = null
-    private var globalPosition = 0
-    private lateinit var globalSearchKeyword: String
     private lateinit var globalCurrentKeyword: String
 
-    private val logSelectorListener = object : AdapterView.OnItemSelectedListener {
-        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-            globalCurrentKeyword = logEvents[position]
-            tvLog.text = logEvents[position]
-            callback.onClickTagItem.invoke(logEvents[position])
-            rvLog.removeAllViewsInLayout()
-        }
-
-        override fun onNothingSelected(parent: AdapterView<*>?) {
-
-        }
-    }
-
-    private var isScrollBottom = false
-
-    fun addLogTextView(log: List<LogUiModel>) {
-        logController.setData(log)
-        logController.adapter.itemCount.takeIf { it > 0 }?.let {
-            if (isScrollBottom) rvLog.smoothScrollToPosition(log.size - 1)
-        }
-    }
-
     init {
+        windowManager.addView(rootView, rootViewParams)
+
         EventBus.getDefault().register(this@OverlayTaskView)
         setRv()
         setClickListener()
-//        getFilterKeywordList()
     }
-//    fun init() {
-//        EventBus.getDefault().register(this@OverlayTaskView)
-//        setRv()
-//        setClickListener()
-//        getFilterKeywordList()
-//    }
+
+    fun fetchLogs(log: List<LogUiModel>) {
+        logController.setData(log)
+    }
+
+    fun scrollPosition(position: Int) {
+        try {
+            val layoutManager = rvLog.layoutManager as LinearLayoutManager
+            layoutManager.scrollToPositionWithOffset(position, 0)
+        } catch (e: Exception) {
+            Toast.makeText(context, "The end has been reached.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     fun onSearchKeyword(keyword: String) {
         try {
-            llSearchTool.isVisible = true
-            tvSearchKeyword.text = keyword
-
-            globalSearchKeyword = keyword
-
-            globalUiModels = logController.currentData?.withIndex()?.filter { it.value.content.contains(keyword, true) }
-            globalPosition = globalUiModels?.first()?.index ?: throw IllegalStateException("Not found.")
-            rvLog.smoothScrollToPosition(globalPosition)
+            callback.onClickSearch.invoke(keyword, logController.currentData)
         } catch (e: Exception) {
             Toast.makeText(context, "Not found. Search Log", Toast.LENGTH_SHORT).show()
         }
     }
 
-    fun onCreateView() {
-        if (sharedPreferences.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND, false)) {
-            rvLog.setBackgroundColor(
-                ContextCompat.getColor(
-                    context,
-                    R.color.default_app_color
-                )
-            )
-        } else rvLog.setBackgroundColor(ContextCompat.getColor(context, R.color.transparent_gray))
-        windowManager.addView(rootView, rootViewParams)
+    fun searchLog(keyword: String, position: Int) {
+        llSearchTool.isVisible = true
+        tvSearchKeyword.text = keyword
+        rvLog.smoothScrollToPosition(position)
+    }
+
+    fun makeToast(message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
     fun onDestroyView() {
         windowManager.removeView(rootView)
+    }
+
+    private fun onCreateView() {
+        windowManager.addView(rootView, rootViewParams)
     }
 
     private fun setRv() {
@@ -179,25 +147,13 @@ internal class OverlayTaskView @JvmOverloads constructor(
         }
 
         ivUpBtn.setOnClickListener {
-            try {
-                globalUiModels = logController.currentData?.withIndex()?.filter { it.value.content.contains(globalSearchKeyword) }
-                globalPosition = globalUiModels?.findLast { it.index < globalPosition }?.index ?: throw IllegalStateException("Not found.")
-                rvLog.smoothScrollToPosition(globalPosition)
-            } catch (e: Exception) {
-                rvLog.smoothScrollToPosition(globalPosition)
-                Toast.makeText(context, "The end has been reached.", Toast.LENGTH_SHORT).show()
-            }
+            val position = getScrollPosition()
+            callback.onClickPageUp.invoke(logController.currentData, position)
         }
 
         ivDownBtn.setOnClickListener {
-            try {
-                globalUiModels = logController.currentData?.withIndex()?.filter { it.value.content.contains(globalSearchKeyword) }
-                globalPosition = globalUiModels?.find { it.index > globalPosition }?.index ?: throw IllegalStateException("Not found.")
-                rvLog.smoothScrollToPosition(globalPosition)
-            } catch (e: Exception) {
-                rvLog.smoothScrollToPosition(globalPosition)
-                Toast.makeText(context, "The end has been reached.", Toast.LENGTH_SHORT).show()
-            }
+            val position = getScrollPosition()
+            callback.onClickPageDown.invoke(logController.currentData, position)
         }
 
         ivSetting.setOnClickListener {
@@ -220,9 +176,6 @@ internal class OverlayTaskView @JvmOverloads constructor(
 
         tvLog.setOnClickListener {
             if (isExpandView.not()) callback.onClickOpen.invoke()
-
-//            if (isExpandView.not()) applyExpandView()
-//            if (isExpandView.not())
         }
 
         cbZoom.setOnClickListener {
@@ -238,10 +191,20 @@ internal class OverlayTaskView @JvmOverloads constructor(
                 }
             }
         }
-        rvLog.setOnScrollChangeListener { _, _, _, _, _ ->
-            isScrollBottom = !rvLog.canScrollVertically(1)
+//        rvLog.setOnScrollChangeListener { _, _, _, _, _ ->
+//            isScrollBottom = !rvLog.canScrollVertically(1)
+//        }
+
+        spLog.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                globalCurrentKeyword = logEvents[position]
+                tvLog.text = logEvents[position]
+                callback.onClickTagItem.invoke(logEvents[position])
+                rvLog.removeAllViewsInLayout()
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
-        spLog.onItemSelectedListener = logSelectorListener
 
         ivMove.setOnTouchListener { _, event ->
             when (event.action) {
@@ -263,40 +226,6 @@ internal class OverlayTaskView @JvmOverloads constructor(
         }
     }
 
-    private fun getFilterKeywordList() {
-        val stringPrefs = sharedPreferences.getString(EDDY_LOG_FILTER_KEYWORD, null)
-        var arrayListPrefs: List<String>
-        if (stringPrefs != null && stringPrefs != "[]") {
-            arrayListPrefs = GsonBuilder().create().fromJson(
-                stringPrefs, object : TypeToken<ArrayList<String>>() {}.type
-            )
-            logEvents = arrayListPrefs
-
-            spLog.adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, logEvents)
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private val viewMoveListener = OnTouchListener { _, event ->
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                touchX = event.rawX.toInt()
-                touchY = event.rawY.toInt()
-                viewX = rootViewParams.x
-                viewY = rootViewParams.y
-            }
-            MotionEvent.ACTION_MOVE -> {
-
-                val x = (event.rawX - touchX).toInt()
-                val y = (event.rawY - touchY).toInt()
-                rootViewParams.x = viewX + x
-                rootViewParams.y = viewY + y
-                windowManager.updateViewLayout(rootView, rootViewParams)
-            }
-        }
-        return@OnTouchListener false
-    }
-
     fun setState(state: OverlayTaskContract.State) {
         ivSetting.isVisible = state.setting
         isExpandView = state.expandView
@@ -310,13 +239,14 @@ internal class OverlayTaskView @JvmOverloads constructor(
         ivMove.isVisible = state.move
         tvLog.isVisible = state.keywordTitle
 
-        if (state.filterKeyword) spLog.adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, state.filterKeywordList)
+        if (state.filterKeywordList.isNotEmpty()) spLog.adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, state.filterKeywordList)
         if (state.log) {
             rvLog.apply {
                 updateLayoutParams {
                     width = Resources.getSystem().displayMetrics.widthPixels
                     height = ((Resources.getSystem().displayMetrics.heightPixels / screenRatio))
                 }
+                setBackgroundColor(ContextCompat.getColor(context, state.backgroundColor))
                 isVisible = true
             }
         } else {
@@ -346,7 +276,13 @@ internal class OverlayTaskView @JvmOverloads constructor(
         }
 
         logEvents = state.filterKeywordList
+
         windowManager.updateViewLayout(rootView, rootViewParams)
+    }
+
+    private fun getScrollPosition(): Int {
+        val layoutManager = rvLog.layoutManager as LinearLayoutManager
+        return layoutManager.findFirstVisibleItemPosition()
     }
 
     @Subscribe
@@ -354,8 +290,7 @@ internal class OverlayTaskView @JvmOverloads constructor(
         when (event) {
             SettingEvent.OnBackPress -> {
                 onCreateView()
-                getFilterKeywordList()
-                callback.onClickTagItem.invoke(globalCurrentKeyword)
+                callback.onClickBackPressed.invoke(globalCurrentKeyword)
             }
         }
     }
