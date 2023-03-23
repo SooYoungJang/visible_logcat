@@ -21,7 +21,6 @@ import com.google.gson.reflect.TypeToken
 import com.sooyoungjang.debuglibrary.presentation.view.model.LogUiModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlin.math.log
 
 @SuppressLint("ClickableViewAccessibility")
 internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
@@ -33,8 +32,15 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
     }
 
     private val appContainer: AppContainer by lazy { DiManager.getInstance(this).appContainer }
-    private val viewModel: OverlayTaskViewModel by lazy { OverlayTaskViewModel(appContainer.getLogcatUseCase, appContainer.clearLogUseCase, appContainer.deleteLogUseCase, appContainer.sharedPreferencesUtil, appContainer.resourceProvider) }
-    private val sharedPreferences: SharedPreferences by lazy {getSharedPreferences(Constants.SharedPreferences.EDDY_DEBUG_TOOL, Context.MODE_PRIVATE)}
+    private val viewModel: OverlayTaskViewModel by lazy {
+        OverlayTaskViewModel(
+            appContainer.getLogcatUseCase,
+            appContainer.clearLogUseCase,
+            appContainer.deleteLogUseCase,
+            appContainer.sharedPreferencesUtil,
+            appContainer.resourceProvider
+        )
+    }
 
     private val binder = OverlayDebugToolPopUpBinder()
     private val view: OverlayTaskView by lazy { OverlayTaskView(context = applicationContext, callback = this) }
@@ -44,7 +50,6 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
     override fun onCreate() {
         super.onCreate()
         initObservers()
-        saveFilterKeywordList()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -76,30 +81,8 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.effect.distinctUntilChanged().collect {
-                    when (it) {
-                        is OverlayTaskContract.SideEffect.FetchLogs -> view.fetchLogs(it.logs)
-                        is OverlayTaskContract.SideEffect.ScrollPosition -> view.scrollPosition(it.position)
-                        is OverlayTaskContract.SideEffect.SearchLog -> view.searchLog(it.keyword, it.position)
-                        is OverlayTaskContract.SideEffect.Error.NotFoundLog -> view.makeToast(it.message)
-                    }
+                    view.setEffect(it)
                 }
-            }
-        }
-    }
-
-    private fun saveFilterKeywordList() {
-        if(sharedPreferences.getString(Constants.SharedPreferences.EDDY_LOG_FILTER_KEYWORD, null) == null) {
-            var arrayListPrefs = ArrayList<String>()
-            var stringPrefs : String? = null
-
-            arrayListPrefs.add(0, "normal")
-            stringPrefs = GsonBuilder().create().toJson(
-                arrayListPrefs,
-                object : TypeToken<ArrayList<String>>() {}.type
-            )
-            sharedPreferences.edit().apply {
-                putString(Constants.SharedPreferences.EDDY_LOG_FILTER_KEYWORD, stringPrefs)
-                apply()
             }
         }
     }
@@ -112,8 +95,8 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
         viewModel.setEvent(OverlayTaskContract.Event.OnCloseClick)
     }
 
-    private fun onClickTagItem(tag: String) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnKeywordItemClick(tag))
+    private fun onClickTagItem(position: Int) {
+        viewModel.setEvent(OverlayTaskContract.Event.OnKeywordItemClick(position))
     }
 
     private fun onLongClickCloseService() {
@@ -128,20 +111,24 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
         viewModel.setEvent(OverlayTaskContract.Event.OnOpenClick)
     }
 
-    private fun onClickBackPressed(tag: String) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnBackPressedClickFromSetting(tag))
+    private fun onClickBackPressed() {
+        viewModel.setEvent(OverlayTaskContract.Event.OnBackPressedClickFromSetting)
     }
 
-    private fun onClickSearch(searchKeyword: String ,logUiModels: List<LogUiModel>?) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnSearchClick(searchKeyword, logUiModels))
+    private fun onClickSearch(logUiModels: List<LogUiModel>?,keyword: String) {
+        viewModel.setEvent(OverlayTaskContract.Event.OnSearchClick(logUiModels, keyword))
     }
 
-    private fun onClickPageUp(logUiModels: List<LogUiModel>?, currentPosition: Int) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnPageUpClick(logUiModels, currentPosition))
+    private fun onClickPageUp(logUiModels: List<LogUiModel>?,keyword: String, currentPosition: Int) {
+        viewModel.setEvent(OverlayTaskContract.Event.OnPageUpClick(logUiModels, keyword, currentPosition))
     }
 
-    private fun onClickPageDown(logUiModels: List<LogUiModel>?, currentPosition: Int) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnPageDownClick(logUiModels, currentPosition))
+    private fun onClickPageDown(logUiModels: List<LogUiModel>?,keyword: String, currentPosition: Int) {
+        viewModel.setEvent(OverlayTaskContract.Event.OnPageDownClick(logUiModels,keyword, currentPosition))
+    }
+
+    private fun onCollectLog(keyword: String) {
+        viewModel.setEvent(OverlayTaskContract.Event.OnCollectLog(keyword))
     }
 
     override fun onDestroy() {
@@ -152,13 +139,14 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
 
     override val onClickOpen: () -> Unit = ::onClickTitle
     override val onClickClose: () -> Unit = ::onClickClose
-    override val onClickTagItem: (tag: String) -> Unit = ::onClickTagItem
-    override val onClickBackPressed: (tag: String) -> Unit = :: onClickBackPressed
+    override val onClickTagItem: (position: Int) -> Unit = ::onClickTagItem
+    override val onCollectLog: (keyword: String) -> Unit = ::onCollectLog
+    override val onClickBackPressed: () -> Unit = ::onClickBackPressed
     override val onLongClickCloseService: () -> Unit = ::onLongClickCloseService
     override val onClickDelete: () -> Unit = ::onClickDelete
-    override val onClickSearch: (searchKeyword: String ,logUiModels: List<LogUiModel>?) -> Unit = ::onClickSearch
-    override val onClickPageUp: (logUiModels: List<LogUiModel>?, currentPosition: Int) -> Unit = ::onClickPageUp
-    override val onClickPageDown: (logUiModels: List<LogUiModel>?, currentPosition: Int) -> Unit = ::onClickPageDown
+    override val onClickSearch: (logUiModels: List<LogUiModel>?, keyword: String) -> Unit = ::onClickSearch
+    override val onClickPageUp: (logUiModels: List<LogUiModel>?, keyword: String, currentPosition: Int) -> Unit = ::onClickPageUp
+    override val onClickPageDown: (logUiModels: List<LogUiModel>?, keyword: String, currentPosition: Int) -> Unit = ::onClickPageDown
 
     companion object {
         const val SEARCH_KEYWORD = "Search Keyword"

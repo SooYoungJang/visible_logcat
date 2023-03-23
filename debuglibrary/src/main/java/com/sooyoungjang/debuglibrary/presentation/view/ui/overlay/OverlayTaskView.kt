@@ -7,6 +7,7 @@ import android.content.res.Resources
 import android.graphics.PixelFormat
 import android.os.Build
 import android.util.AttributeSet
+import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.core.content.ContextCompat
@@ -57,8 +58,6 @@ internal class OverlayTaskView @JvmOverloads constructor(
     private val screenRatio = 3
     private val screenFullRatio = 1.5
 
-    private lateinit var logEvents: List<String>
-
     private val inflate: LayoutInflater by lazy { context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater }
     private val ivMove: ImageView by lazy { rootView.findViewById(R.id.iv_move) }
     private val ivSetting: ImageView by lazy { rootView.findViewById(R.id.iv_setting) }
@@ -75,8 +74,6 @@ internal class OverlayTaskView @JvmOverloads constructor(
     private val tvSearchKeyword: TextView by lazy { rootView.findViewById(R.id.tv_search_keyword) }
     private val rvLog: EpoxyRecyclerView by lazy { rootView.findViewById(R.id.rv_logs) }
 
-    private lateinit var globalCurrentKeyword: String
-
     init {
         windowManager.addView(rootView, rootViewParams)
 
@@ -85,51 +82,77 @@ internal class OverlayTaskView @JvmOverloads constructor(
         setClickListener()
     }
 
-    fun fetchLogs(log: List<LogUiModel>) {
-        logController.setData(log)
-    }
-
-    fun scrollPosition(position: Int) {
-        try {
-            val layoutManager = rvLog.layoutManager as LinearLayoutManager
-            layoutManager.scrollToPositionWithOffset(position, 0)
-        } catch (e: Exception) {
-            Toast.makeText(context, "The end has been reached.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     fun onSearchKeyword(keyword: String) {
         try {
-            callback.onClickSearch.invoke(keyword, logController.currentData)
+            callback.onClickSearch.invoke(logController.currentData, keyword)
         } catch (e: Exception) {
-            Toast.makeText(context, "Not found. Search Log", Toast.LENGTH_SHORT).show()
+            makeToast("Not found. Search Log")
         }
-    }
-
-    fun searchLog(keyword: String, position: Int) {
-        llSearchTool.isVisible = true
-        tvSearchKeyword.text = keyword
-        rvLog.smoothScrollToPosition(position)
-    }
-
-    fun makeToast(message: String) {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
     fun onDestroyView() {
         windowManager.removeView(rootView)
     }
 
-    private fun onCreateView() {
-        windowManager.addView(rootView, rootViewParams)
+    fun setState(state: OverlayTaskContract.State) {
+        ivSetting.isVisible = state.setting
+        isExpandView = state.expandView
+        ivClose.isVisible = state.close
+        spLog.isVisible = state.filterKeyword
+        cbZoom.isVisible = state.zoom
+        cbZoom.isChecked = state.zoomChecked
+        ivTrashLog.isVisible = state.trash
+        ivSearch.isVisible = state.searching
+        llSearchTool.isVisible = state.searchLayout
+        ivMove.isVisible = state.move
+        tvLog.isVisible = state.keywordTitle
+
+        if (state.filterKeywordList.isNotEmpty()) spLog.adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, state.filterKeywordList)
+        if (state.log) {
+            rvLog.apply {
+                updateLayoutParams {
+                    width = Resources.getSystem().displayMetrics.widthPixels
+                    height = ((Resources.getSystem().displayMetrics.heightPixels / screenRatio))
+                }
+                setBackgroundColor(ContextCompat.getColor(context, state.backgroundColor))
+                isVisible = true
+            }
+        } else {
+            rvLog.apply {
+                isVisible = false
+                removeAllViewsInLayout()
+            }
+        }
+
+        spLog.setSelection(state.keywordSelectedPosition)
+
+        if (state.expandView) {
+            tvLog.text = state.filterKeywordTitle
+            val moveLayoutParams = ivMove.layoutParams as RelativeLayout.LayoutParams
+            moveLayoutParams.removeRule(RelativeLayout.RIGHT_OF)
+            moveLayoutParams.addRule(RelativeLayout.LEFT_OF, ivClose.id)
+            ivMove.layoutParams = moveLayoutParams
+            rootViewParams.width = WindowManager.LayoutParams.MATCH_PARENT
+            callback.onCollectLog.invoke("normal")
+        } else {
+            tvLog.text = state.logTitle
+            val moveLayoutParams = ivMove.layoutParams as RelativeLayout.LayoutParams
+            moveLayoutParams.removeRule(RelativeLayout.LEFT_OF)
+            moveLayoutParams.addRule(RelativeLayout.RIGHT_OF, tvLog.id)
+            ivMove.layoutParams = moveLayoutParams
+            rootViewParams.width = WindowManager.LayoutParams.WRAP_CONTENT
+        }
+
+        windowManager.updateViewLayout(rootView, rootViewParams)
     }
 
-    private fun setRv() {
-        rvLog.apply {
-            setController(logController)
-            layoutManager = LinearLayoutManager(context).apply {
-                orientation = LinearLayoutManager.VERTICAL
-            }
+    fun setEffect(effect: OverlayTaskContract.SideEffect) {
+        when (effect) {
+            is OverlayTaskContract.SideEffect.FetchLogs -> fetchLogs(effect.logs)
+            is OverlayTaskContract.SideEffect.ScrollPosition -> scrollPosition(effect.position)
+            is OverlayTaskContract.SideEffect.SearchLog -> setSearchMode(effect.keyword, effect.position)
+            is OverlayTaskContract.SideEffect.Error.NotFoundLog -> makeToast(effect.message)
+            is OverlayTaskContract.SideEffect.BackPressed -> backPressedEvent(effect.filterKeywordList, effect.backgroundColor)
         }
     }
 
@@ -148,12 +171,14 @@ internal class OverlayTaskView @JvmOverloads constructor(
 
         ivUpBtn.setOnClickListener {
             val position = getScrollPosition()
-            callback.onClickPageUp.invoke(logController.currentData, position)
+            val keyword = tvSearchKeyword.text.toString()
+            callback.onClickPageUp.invoke(logController.currentData, keyword, position)
         }
 
         ivDownBtn.setOnClickListener {
             val position = getScrollPosition()
-            callback.onClickPageDown.invoke(logController.currentData, position)
+            val keyword = tvSearchKeyword.text.toString()
+            callback.onClickPageDown.invoke(logController.currentData, keyword, position)
         }
 
         ivSetting.setOnClickListener {
@@ -191,16 +216,10 @@ internal class OverlayTaskView @JvmOverloads constructor(
                 }
             }
         }
-//        rvLog.setOnScrollChangeListener { _, _, _, _, _ ->
-//            isScrollBottom = !rvLog.canScrollVertically(1)
-//        }
 
         spLog.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                globalCurrentKeyword = logEvents[position]
-                tvLog.text = logEvents[position]
-                callback.onClickTagItem.invoke(logEvents[position])
-                rvLog.removeAllViewsInLayout()
+                callback.onClickTagItem.invoke(position)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -226,58 +245,26 @@ internal class OverlayTaskView @JvmOverloads constructor(
         }
     }
 
-    fun setState(state: OverlayTaskContract.State) {
-        ivSetting.isVisible = state.setting
-        isExpandView = state.expandView
-        ivClose.isVisible = state.close
-        spLog.isVisible = state.filterKeyword
-        cbZoom.isVisible = state.zoom
-        cbZoom.isChecked = state.zoomChecked
-        ivTrashLog.isVisible = state.trash
-        ivSearch.isVisible = state.searching
-        llSearchTool.isVisible = state.searchLayout
-        ivMove.isVisible = state.move
-        tvLog.isVisible = state.keywordTitle
+    private fun onCreateView() {
+        windowManager.addView(rootView, rootViewParams)
+    }
 
-        if (state.filterKeywordList.isNotEmpty()) spLog.adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, state.filterKeywordList)
-        if (state.log) {
-            rvLog.apply {
-                updateLayoutParams {
-                    width = Resources.getSystem().displayMetrics.widthPixels
-                    height = ((Resources.getSystem().displayMetrics.heightPixels / screenRatio))
-                }
-                setBackgroundColor(ContextCompat.getColor(context, state.backgroundColor))
-                isVisible = true
-            }
-        } else {
-            rvLog.apply {
-                isVisible = false
-                removeAllViewsInLayout()
+    private fun setRv() {
+        rvLog.apply {
+            setController(logController)
+            layoutManager = LinearLayoutManager(context).apply {
+                orientation = LinearLayoutManager.VERTICAL
             }
         }
+    }
 
-        spLog.setSelection(state.keywordSelectedPosition)
-
-        if (state.expandView) {
-            tvLog.text = state.filterKeywordList[0]
-            val moveLayoutParams = ivMove.layoutParams as RelativeLayout.LayoutParams
-            moveLayoutParams.removeRule(RelativeLayout.RIGHT_OF)
-            moveLayoutParams.addRule(RelativeLayout.LEFT_OF, ivClose.id)
-            ivMove.layoutParams = moveLayoutParams
-            rootViewParams.width = WindowManager.LayoutParams.MATCH_PARENT
-            callback.onClickTagItem.invoke("normal")
-        } else {
-            tvLog.text = state.logTitle
-            val moveLayoutParams = ivMove.layoutParams as RelativeLayout.LayoutParams
-            moveLayoutParams.removeRule(RelativeLayout.LEFT_OF)
-            moveLayoutParams.addRule(RelativeLayout.RIGHT_OF, tvLog.id)
-            ivMove.layoutParams = moveLayoutParams
-            rootViewParams.width = WindowManager.LayoutParams.WRAP_CONTENT
+    private fun scrollPosition(position: Int) {
+        try {
+            val layoutManager = rvLog.layoutManager as LinearLayoutManager
+            layoutManager.scrollToPositionWithOffset(position, 0)
+        } catch (e: Exception) {
+            makeToast("The end has been reached.")
         }
-
-        logEvents = state.filterKeywordList
-
-        windowManager.updateViewLayout(rootView, rootViewParams)
     }
 
     private fun getScrollPosition(): Int {
@@ -285,12 +272,33 @@ internal class OverlayTaskView @JvmOverloads constructor(
         return layoutManager.findFirstVisibleItemPosition()
     }
 
+    private fun backPressedEvent(keywords: List<String>, color: Int) {
+        if (keywords.isNotEmpty()) { spLog.adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, keywords) }
+
+        rvLog.setBackgroundColor(ContextCompat.getColor(context, color))
+    }
+
+    private fun fetchLogs(log: List<LogUiModel>) {
+        logController.setData(log)
+    }
+
+    private fun setSearchMode(keyword: String, position: Int) {
+        llSearchTool.isVisible = true
+        tvSearchKeyword.text = keyword
+        rvLog.smoothScrollToPosition(position)
+    }
+
+    private fun makeToast(message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+
     @Subscribe
     fun settingEventHandler(event: SettingEvent) {
         when (event) {
             SettingEvent.OnBackPress -> {
                 onCreateView()
-                callback.onClickBackPressed.invoke(globalCurrentKeyword)
+                callback.onClickBackPressed.invoke()
             }
         }
     }
