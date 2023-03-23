@@ -1,18 +1,25 @@
-////////// 3. add jacocoTestReport task like so //////////
 task jacocoTestReport(type: JacocoReport, dependsOn: 'testDebugUnitTest') {
-
     reports {
-        xml.enabled true
-
-        //////////  5. xml.destination must be same as sonaqube property  //////////
-        xml.destination file("${project.projectDir}/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
+        xml.enabled = false
+        html.enabled = true
     }
+    sourceDirectories = files([mainSrc])
+    classDirectories = files([debugTree])
+    executionData = fileTree(dir: project.buildDir, includes: [
+            'jacoco/testDebugUnitTest.exec', 'outputs/code-coverage/connected/*coverage.ec'
+    ])
+}
 
-    def fileFilter = ['**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*', 'android/**/*.*']
-    def debugTree = fileTree(dir: "${buildDir}/intermediates/javac/debug", excludes: fileFilter)
-    def mainSrc = "${project.projectDir}/src/main/java"
-
-    sourceDirectories.from = files([mainSrc])
-    classDirectories.from = files([debugTree])
-    executionData.from = files("${buildDir}/jacoco/testDebugUnitTest.exec")
+task jacocoTestCoverageVerification(type: JacocoCoverageVerification, dependsOn: 'jacocoTestReport') {
+    sourceDirectories = files([mainSrc])
+    classDirectories = files([debugTree])
+    executionData = files("${buildDir}/jacoco/testDebugUnitTest.exec")
+    violationRules {
+        failOnViolation = true
+        rule {
+            limit {
+                minimum = 0.95
+            }
+        }
+    }
 }

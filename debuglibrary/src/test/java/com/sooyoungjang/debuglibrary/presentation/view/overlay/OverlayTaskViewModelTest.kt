@@ -7,6 +7,7 @@ import com.sooyoungjang.debuglibrary.domain.log.model.LogModel
 import com.sooyoungjang.debuglibrary.domain.log.usecase.ClearLogUseCase
 import com.sooyoungjang.debuglibrary.domain.log.usecase.DeleteLogUseCase
 import com.sooyoungjang.debuglibrary.domain.log.usecase.GetLogcatUseCase
+import com.sooyoungjang.debuglibrary.domain.log.usecase.GetLogcatUseCaseTest
 import com.sooyoungjang.debuglibrary.presentation.view.model.LogUiModel
 import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.OverlayTaskContract
 import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.viewmodel.OverlayTaskViewModel
@@ -21,11 +22,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import kotlin.math.log
 
 @ExperimentalCoroutinesApi
 @ExtendWith(MainCoroutineRule::class)
