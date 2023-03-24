@@ -5,14 +5,21 @@ import com.example.debuglibrary.R
 import com.sooyoungjang.debuglibrary.domain.datastore.usecase.WriteDataStoreUseCase
 import com.sooyoungjang.debuglibrary.presentation.view.ui.permission.PermissionContract
 import com.sooyoungjang.debuglibrary.presentation.view.ui.permission.viewmodel.PermissionViewModel
+import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.viewmodel.SettingViewModel
 import com.sooyoungjang.debuglibrary.util.ResourceProvider
 import com.sooyoungjang.debuglibrary.util.di.MainCoroutineRule
+import io.kotest.core.spec.IsolationMode
+import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.Rule
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -20,80 +27,82 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
 @ExperimentalCoroutinesApi
-@ExtendWith(MainCoroutineRule::class)
-class PermissionViewModelTest {
+class PermissionViewModelTest : BehaviorSpec({
+
+    coroutineTestScope = true
+    isolationMode = IsolationMode.InstancePerLeaf
+    val testDispatcher = UnconfinedTestDispatcher()
+
+    beforeSpec {
+        Dispatchers.setMain(testDispatcher)
+    }
+
+    afterSpec {
+        Dispatchers.resetMain()
+    }
 
     val fixture = kotlinFixture()
-    private lateinit var viewModel: PermissionViewModel
-    private val resourceProvider: ResourceProvider = mockk(relaxed = true) {
+    val resourceProvider: ResourceProvider = mockk(relaxed = true) {
         every { getString(R.string.request_permission) } returns fixture()
         every { getString(R.string.confirm) } returns fixture()
         every { getString(R.string.cancel) } returns fixture()
         every { getString(R.string.never_see_again) } returns fixture()
     }
 
-    private val writeDataStoreUseCase: WriteDataStoreUseCase = mockk(relaxed = true)
+    val writeDataStoreUseCase: WriteDataStoreUseCase = mockk(relaxed = true)
 
-    @ExperimentalCoroutinesApi
-    @get:Rule
-    var mainCoroutineRule = MainCoroutineRule()
-
-    @BeforeEach
-    fun setup() {
-        viewModel = PermissionViewModel(writeDataStoreUseCase, resourceProvider)
-    }
-
-    @Test
-    fun `viewModel 의 초기 State 값은 idle 이다 `() {
+    Given("viewModel 이 생성 되고") {
+        val viewModel = PermissionViewModel(writeDataStoreUseCase, resourceProvider)
         val idleState = viewModel.createIdleState()
 
-        assertEquals(PermissionContract.State.idle(), idleState)
+        When("대기 상태 일 때") {
+            Then("State 값은 Idle 상태 이다.") {
+                assertEquals(PermissionContract.State.idle(), idleState)
+            }
+        }
+
+        When("대기 상태 이후에") {
+            val excepted = PermissionContract.State.idle().copy(
+                title = resourceProvider.getString(R.string.request_permission),
+                confirmTitle = resourceProvider.getString(R.string.confirm),
+                cancelTitle = resourceProvider.getString(R.string.cancel),
+                neverSeeAgainTitle = resourceProvider.getString(R.string.never_see_again)
+            )
+            Then("디폴트 값으로 상태를 변경 한다.") {
+                assertEquals(excepted, viewModel.currentState)
+            }
+        }
+
+        When("권한 확인을 클릭 하면") {
+            val event = PermissionContract.Event.OnConfirmClick
+            val expected = PermissionContract.SideEffect.CheckPermission
+
+            viewModel.handleEvent(event)
+            Then("권한 창으로 이동하는 SideEffect 를 방출한다") {
+                assertEquals(expected, viewModel.effect.first())
+            }
+        }
+
+        When("권한 취소를 클릭 하면") {
+            val event = PermissionContract.Event.OnCancelClick
+            val expected = PermissionContract.SideEffect.Cancel
+
+            viewModel.handleEvent(event)
+            Then("SideEffect 를 방출 한다") {
+                assertEquals(expected, viewModel.effect.first())
+            }
+        }
+
+        When("권한 영구 거절을 클릭 하면") {
+            val event = PermissionContract.Event.OnNeverSeeAgainClick
+            val expected = PermissionContract.SideEffect.NeverSeeAgainCancel
+
+            viewModel.handleEvent(event)
+            Then("데이터를 저장하고, 취소 SideEffect 를 방출 한다") {
+                coVerify { writeDataStoreUseCase.run(true) }
+                assertEquals(expected, viewModel.effect.first())
+            }
+        }
     }
 
-    @Test
-    fun `viewModel이 init 되고 난 후에는 디폴트 값을 넣어 준다 `() {
-        viewModel.createIdleState()
-
-        val excepted = PermissionContract.State.idle().copy(
-            title = resourceProvider.getString(R.string.request_permission),
-            confirmTitle = resourceProvider.getString(R.string.confirm),
-            cancelTitle = resourceProvider.getString(R.string.cancel),
-            neverSeeAgainTitle = resourceProvider.getString(R.string.never_see_again)
-        )
-
-        assertEquals(excepted, viewModel.currentState)
-    }
-
-    @Test
-    fun ` 권한 확인을 누른 다면 권한 창으로 이동하는 SideEffect 를 방출한다 `() = runTest {
-        val event = PermissionContract.Event.OnConfirmClick
-        val expected = PermissionContract.SideEffect.CheckPermission
-
-        viewModel.handleEvent(event)
-
-        assertEquals(expected, viewModel.effect.first())
-    }
-
-    @Test
-    fun `취소를 하게 되면 취소 SideEffect 를 방출 한다`() = runTest {
-        val event = PermissionContract.Event.OnCancelClick
-        val expected = PermissionContract.SideEffect.Cancel
-
-        viewModel.handleEvent(event)
-
-        assertEquals(expected, viewModel.effect.first())
-    }
-
-    @Test
-    fun `권한을 영구 거절 하면 해당 데이터를 저장하고, 취소 SideEffect 를 방출 한다 `() = runTest {
-        val event = PermissionContract.Event.OnNeverSeeAgainClick
-        val expected = PermissionContract.SideEffect.NeverSeeAgainCancel
-
-        viewModel.handleEvent(event)
-
-        coVerify { writeDataStoreUseCase.run(true) }
-        assertEquals(expected, viewModel.effect.first())
-    }
-
-
-}
+})
