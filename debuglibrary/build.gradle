@@ -65,7 +65,6 @@ android {
     testOptions {
         unitTests.all {
             useJUnitPlatform()
-            finalizedBy jacocoTestReport
         }
     }
 
@@ -91,6 +90,7 @@ dependencies {
     def junit5_version = "5.8.2"
     def mockito_version = "3.11.2"
     def fixture_version = "1.2.0"
+    def coreTesting_version = "2.1.0"
 
     // epoxy
     implementation "com.airbnb.android:epoxy:$epoxy_Version"
@@ -137,6 +137,8 @@ dependencies {
     testImplementation "io.mockk:mockk:$mockk_version"
     androidTestImplementation "io.mockk:mockk-android:$mockk_version"
 
+    // Run Blocking Test
+    testImplementation "androidx.arch.core:core-testing:$coreTesting_version"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junit5_version"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junit5_version"
