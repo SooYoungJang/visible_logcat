@@ -6,6 +6,7 @@ plugins {
     id 'kotlin-parcelize'
     id 'de.mannodermaus.android-junit5'
     id 'jacoco'
+    id 'kotlin-android'
 }
 
 def getVersion() {
@@ -60,6 +61,11 @@ android {
     buildFeatures {
         dataBinding true
         viewBinding true
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.3.2'
     }
 
     testOptions {
@@ -90,6 +96,25 @@ dependencies {
     def mockito_version = "3.11.2"
     def fixture_version = "1.2.0"
     def kotest_version = "5.5.3"
+    def coreTesting_version = "2.1.0"
+    def compose_version = "1.2.1"
+    def compose_animation_version = "1.5.1"
+    def compose_lifecycle_version = "2.5.1"
+
+
+    implementation "androidx.compose.runtime:runtime:$compose_version"
+    // Compose Material Design
+    implementation "androidx.compose.material:material:$compose_version"
+    // Animations
+    implementation "androidx.compose.animation:animation:$compose_version"
+    // Tooling support (Previews, etc.)
+    implementation "androidx.compose.ui:ui-tooling:$compose_version"
+    // UI Tests
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
+    // Integration with ViewModels
+    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:$compose_lifecycle_version"
+    // Integration with activities
+    implementation "androidx.activity:activity-compose:$compose_animation_version"
 
     // epoxy
     implementation "com.airbnb.android:epoxy:$epoxy_Version"
