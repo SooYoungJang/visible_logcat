@@ -1,6 +1,5 @@
 package com.sooyoungjang.debuglibrary.presentation.view.ui.setting
 
-import android.util.Log
 import com.sooyoungjang.debuglibrary.presentation.base.UiEffect
 import com.sooyoungjang.debuglibrary.presentation.base.UiEvent
 import com.sooyoungjang.debuglibrary.presentation.base.UiState
@@ -18,14 +17,22 @@ internal class SettingContract {
     data class State(
         val curTextSizeListPosition: Int,
         val filterKeywordModels: List<LogKeywordModel>,
-        val darkBackground: Boolean
+        val darkBackground: Boolean,
+        val backgroundTitle: String,
+        val textSizeTitle: String,
+        val filterKeywordTitle: String,
+        val filterKeywordListTitle: String
     ) : UiState {
         companion object Factory {
             fun idle(): State {
                 return State(
                     curTextSizeListPosition = 0,
                     filterKeywordModels = emptyList(),
-                    darkBackground = false
+                    darkBackground = false,
+                    backgroundTitle = "",
+                    textSizeTitle = "",
+                    filterKeywordTitle = "",
+                    filterKeywordListTitle = "",
                 )
             }
         }

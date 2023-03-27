@@ -1,13 +1,16 @@
 package com.sooyoungjang.debuglibrary.presentation.view.ui.setting
 
+import SettingScreenRoute
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.AdapterView
 import android.widget.AdapterView.OnItemSelectedListener
 import android.widget.ArrayAdapter
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -35,7 +38,19 @@ internal class SettingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         _binding = ActivitySettingBinding.inflate(layoutInflater)
         supportActionBar?.title = getString(R.string.setting)
-        setContentView(binding.root)
+//        setContentView(binding.root)
+
+        setContent {
+            MaterialTheme {
+                Surface {
+                    SettingScreenRoute(viewModel = viewModel)
+//                    Text("이거 되는거 맞냐잉??")
+//                    Text("lknlknkl")
+                }
+            }
+        }
+
+
 
         setupBackPressed()
         setupSpinner()
@@ -62,17 +77,17 @@ internal class SettingActivity : AppCompatActivity() {
     }
 
     private fun initObservers() {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect {
-                    with(binding) {
-                        cbBackground.isChecked = it.darkBackground
-                        spTextSize.setSelection(it.curTextSizeListPosition, false)
-                        controller.setData(it.filterKeywordModels)
-                    }
-                }
-            }
-        }
+//        lifecycleScope.launch {
+//            repeatOnLifecycle(Lifecycle.State.STARTED) {
+//                viewModel.uiState.collect {
+//                    with(binding) {
+//                        cbBackground.isChecked = it.darkBackground
+//                        spTextSize.setSelection(it.curTextSizeListPosition, false)
+//                        controller.setData(it.filterKeywordModels)
+//                    }
+//                }
+//            }
+//        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {

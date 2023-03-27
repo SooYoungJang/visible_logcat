@@ -113,6 +113,7 @@ dependencies {
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
     // Integration with ViewModels
     implementation "androidx.lifecycle:lifecycle-viewmodel-compose:$compose_lifecycle_version"
+
     // Integration with activities
     implementation "androidx.activity:activity-compose:$compose_animation_version"
 
