@@ -1,12 +1,13 @@
 package com.sooyoungjang.debuglibrary.presentation.view.setting
 
 import com.appmattus.kotlinfixture.kotlinFixture
+import com.example.debuglibrary.R
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingContract
-import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.epoxy.LogKeywordModel
+import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.model.LogKeywordModel
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.viewmodel.SettingViewModel
 import com.sooyoungjang.debuglibrary.util.Constants
+import com.sooyoungjang.debuglibrary.util.ResourceProvider
 import com.sooyoungjang.debuglibrary.util.SharedPreferencesUtil
-import com.sooyoungjang.debuglibrary.util.di.MainCoroutineRule
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
@@ -14,19 +15,11 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.hamcrest.MatcherAssert.assertThat
-import org.junit.Rule
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.BDDMockito.given
 
 @ExperimentalCoroutinesApi
 class SettingViewModelTest : BehaviorSpec({
@@ -37,6 +30,11 @@ class SettingViewModelTest : BehaviorSpec({
     val testDispatcher = UnconfinedTestDispatcher()
     val sharedPreferencesUtil: SharedPreferencesUtil = mockk(relaxed = true)
 
+    val textSizeArray = listOf("5","6","7","8","9","10","11","12","13","14","15","16","!7","18","19","20","21","22","23")
+    val resourceProvider: ResourceProvider = mockk(relaxed = true) {
+        every { getStringList(R.array.text_size_array) } returns textSizeArray
+    }
+
     beforeSpec {
         Dispatchers.setMain(testDispatcher)
     }
@@ -46,7 +44,7 @@ class SettingViewModelTest : BehaviorSpec({
     }
 
     Given("viewModel 을 생성하고, ") {
-        val viewModel = SettingViewModel(sharedPreferencesUtil)
+        val viewModel = SettingViewModel(sharedPreferencesUtil, resourceProvider)
         val idleState = viewModel.createIdleState()
 
         When("대기 상태 일 때,") {
@@ -56,10 +54,14 @@ class SettingViewModelTest : BehaviorSpec({
         }
 
         When("init 이 완료 되면") {
+
+            val textSizes = resourceProvider.getStringList(R.array.text_size_array)
+
             val expectedState = SettingContract.State.idle().copy(
-                curTextSizeListPosition = sharedPreferencesUtil.getTextSizePosition(),
-                filterKeywordModels = sharedPreferencesUtil.getFilterKeywordList().map { LogKeywordModel(content = it, callback = viewModel) },
-                darkBackground = sharedPreferencesUtil.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND)
+                curTextSizeValue = textSizes[sharedPreferencesUtil.getTextSizePosition()],
+                filterKeywordModels = sharedPreferencesUtil.getFilterKeywordList().map { LogKeywordModel(content = it) },
+                darkBackground = sharedPreferencesUtil.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND),
+                textSizeList = textSizes
             )
             Then("데이터의 상태는 저장 되어 있던 값으로 변경 한다.") {
                 verify { sharedPreferencesUtil.getTextSizePosition() }
@@ -92,7 +94,7 @@ class SettingViewModelTest : BehaviorSpec({
                 verify { sharedPreferencesUtil.putFilterKeyword(event.keyword) }
                 verify { sharedPreferencesUtil.getFilterKeywordList() }
 
-                val expectedModels = keywords.map { LogKeywordModel(content = it, callback = viewModel) }
+                val expectedModels = keywords.map { LogKeywordModel(content = it) }
                 val actualModels = viewModel.currentState.filterKeywordModels
                 assertEquals(expectedModels, actualModels)
             }
@@ -104,13 +106,15 @@ class SettingViewModelTest : BehaviorSpec({
             val removeKeywords = keywords.also { it.remove(keyword) }
             every { sharedPreferencesUtil.getFilterKeywordList() } returns removeKeywords
 
-            viewModel.onClickDeleteKeyword(keyword)
+            val event = SettingContract.Event.OnDeleteFilterKeyword(keyword)
+
+            viewModel.handleEvent(event)
 
             Then("상태를 변경 한다.") {
                 verify { sharedPreferencesUtil.deleteFilterKeyword(keyword) }
                 verify { sharedPreferencesUtil.getFilterKeywordList() }
 
-                val expectedModels = removeKeywords.map { LogKeywordModel(content = it, callback = viewModel) }
+                val expectedModels = removeKeywords.map { LogKeywordModel(content = it) }
                 val actualModels = viewModel.currentState.filterKeywordModels
                 assertEquals(expectedModels, actualModels)
             }
@@ -123,13 +127,15 @@ class SettingViewModelTest : BehaviorSpec({
             val removeKeywords = keywords.also { it.remove(keyword) }
             every { sharedPreferencesUtil.getFilterKeywordList() } returns removeKeywords
 
-            viewModel.onClickDeleteKeyword(keyword)
+            val event = SettingContract.Event.OnDeleteFilterKeyword(keyword)
+
+            viewModel.handleEvent(event)
 
             Then("sideEffect 를 방출 한다.") {
                 verify { sharedPreferencesUtil.deleteFilterKeyword(keyword) }
                 verify { sharedPreferencesUtil.getFilterKeywordList() }
 
-                val expectedModels = removeKeywords.map { LogKeywordModel(content = it, callback = viewModel) }
+                val expectedModels = removeKeywords.map { LogKeywordModel(content = it) }
                 val actualModels = viewModel.currentState.filterKeywordModels
                 assertEquals(expectedModels, actualModels)
             }
@@ -141,7 +147,7 @@ class SettingViewModelTest : BehaviorSpec({
             viewModel.handleEvent(event)
 
             Then("텍스트의 position 사이즈로 textSizeListPosition을 변경 한다") {
-                assertEquals(viewModel.currentState.curTextSizeListPosition, event.position)
+                assertEquals(viewModel.currentState.curTextSizeValue, textSizeArray[event.position])
             }
         }
 

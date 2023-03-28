@@ -7,7 +7,6 @@ import android.content.res.Resources
 import android.graphics.PixelFormat
 import android.os.Build
 import android.util.AttributeSet
-import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.core.content.ContextCompat
@@ -21,7 +20,7 @@ import com.sooyoungjang.debuglibrary.presentation.view.model.LogUiModel
 import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.epoxy.LogController
 import com.sooyoungjang.debuglibrary.presentation.view.ui.search.SearchActivity
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingActivity
-import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingEvent
+import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingContract
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 
@@ -294,9 +293,9 @@ internal class OverlayTaskView @JvmOverloads constructor(
 
 
     @Subscribe
-    fun settingEventHandler(event: SettingEvent) {
+    fun settingEventHandler(event: SettingContract.SideEffect) {
         when (event) {
-            SettingEvent.OnBackPress -> {
+            SettingContract.SideEffect.OnBackPressed -> {
                 onCreateView()
                 callback.onClickBackPressed.invoke()
             }
