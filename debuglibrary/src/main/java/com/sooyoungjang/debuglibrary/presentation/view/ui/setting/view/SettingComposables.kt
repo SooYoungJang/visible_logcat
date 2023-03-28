@@ -1,24 +1,26 @@
-import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.debuglibrary.R
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingContract
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.model.LogKeywordModel
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.viewmodel.SettingViewModel
+import kotlinx.coroutines.launch
 
-
-@SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 internal fun SettingScreenRoute(
     modifier: Modifier = Modifier,
@@ -168,25 +170,34 @@ internal fun TitleAndLazyColumn(
     filterKeywords: List<LogKeywordModel>,
     event: (String) -> Unit
 ) {
+    val reusableItemModifier = Modifier
+        .size(30.dp)
+        .padding(5.dp)
+
+    val scrollState = rememberLazyListState()
+
+    LaunchedEffect(filterKeywords) {
+        if (filterKeywords.isNotEmpty()) scrollState.animateScrollToItem(0)
+    }
+
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             modifier = Modifier
                 .weight(1f)
                 .padding(3.dp), text = text, fontSize = 15.sp
         )
-        LazyColumn(horizontalAlignment = Alignment.End) {
-            items(items = filterKeywords, key = { it.content }) { item ->
-                Row() {
-                    Text(text = item.content)
-                    if (item.content != "normal") Icon(
-                        painter = painterResource(id = R.drawable.trash_can), contentDescription = "deleteIcon",
-                        Modifier
-                            .clickable(enabled = true, onClick = { event.invoke(item.content) })
-                            .size(30.dp)
-                            .padding(5.dp)
-                    )
+        Surface(color = colorResource(id = R.color.transparent_gray)) {
+            LazyColumn(horizontalAlignment = Alignment.End, modifier = Modifier.height(118.dp).width(188.dp), state = scrollState) {
+                items(items = filterKeywords, key = { it.content }) { item ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = item.content, textAlign = TextAlign.Center, modifier = Modifier.padding(end = 5.dp))
+                        if (item.content != "normal") IconButton(onClick = { event.invoke(item.content) }, modifier = reusableItemModifier) {
+                            Icon(painter = painterResource(id = R.drawable.trash_can), contentDescription = "deleteIcon")
+                        }
+                    }
                 }
             }
         }
+
     }
 }
