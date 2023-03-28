@@ -1,6 +1,7 @@
 package com.sooyoungjang.debuglibrary.util
 
 import android.content.SharedPreferences
+import android.util.Log
 import android.widget.Toast
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
@@ -63,8 +64,7 @@ class SharedPreferencesUtil(
     }
 
     fun getFilterKeywordList(): List<String> {
-        val stringPrefs = sharedPreferences.getString(EDDY_LOG_FILTER_KEYWORD, null)
-
+        val stringPrefs = sharedPreferences.getString(EDDY_LOG_FILTER_KEYWORD, "["+"normal"+"]")
         if (stringPrefs != null && stringPrefs != "[]") {
             return GsonBuilder().create().fromJson(stringPrefs, object : TypeToken<ArrayList<String>>() {}.type)
         }
