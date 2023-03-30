@@ -16,7 +16,6 @@ import com.sooyoungjang.debuglibrary.di.DiManager
 import com.sooyoungjang.debuglibrary.presentation.view.ui.base.MaterialBaseTheme
 import com.sooyoungjang.debuglibrary.presentation.view.ui.permission.view.PermissionScreen
 import com.sooyoungjang.debuglibrary.presentation.view.ui.permission.viewmodel.PermissionViewModel
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.greenrobot.eventbus.EventBus
 
@@ -43,7 +42,7 @@ internal class PermissionActivity : AppCompatActivity() {
     private fun initObservers() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.effect.distinctUntilChanged().collect { effect ->
+                viewModel.effect.collect { effect ->
                     when(effect) {
                         PermissionContract.SideEffect.CheckPermission -> checkPermission()
                         PermissionContract.SideEffect.Cancel -> finishActivity()

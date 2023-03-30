@@ -12,7 +12,6 @@ import com.example.debuglibrary.R
 import com.sooyoungjang.debuglibrary.di.AppContainer
 import com.sooyoungjang.debuglibrary.presentation.view.ui.base.MaterialBaseTheme
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.viewmodel.SettingViewModel
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.greenrobot.eventbus.EventBus
 
@@ -38,7 +37,7 @@ internal class SettingActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.effect.distinctUntilChanged().collect { effect ->
+                viewModel.effect.collect { effect ->
                     when (effect) {
                         SettingContract.SideEffect.OnBackPressed -> {
                             EventBus.getDefault().post(effect)

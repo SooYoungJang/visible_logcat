@@ -1,3 +1,4 @@
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,14 +10,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.debuglibrary.R
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingContract
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.model.LogKeywordModel
@@ -28,7 +29,7 @@ internal fun SettingScreen(
     viewModel: SettingViewModel
 ) {
     val scope = rememberCoroutineScope()
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(Modifier.padding(5.dp)) {
         TitleAndCheckbox(text = state.backgroundTitle, isChecked = state.darkBackground, event = { viewModel.setEvent(SettingContract.Event.OnDarkBackgroundClick(it)) })
@@ -61,9 +62,11 @@ internal fun TitleAndCheckbox(
                 .padding(3.dp), text = text, fontSize = 15.sp,
         )
         NoneTitleCheckBox(
-            isChecked, event, modifier = Modifier
+            isChecked, event,  modifier = Modifier
                 .padding(end = 5.dp)
-                .weight(2f)
+                .weight(2f),
+            onImage = R.drawable.img_switch_on,
+            offImage = R.drawable.img_switch_off
         )
     }
 }
@@ -73,10 +76,12 @@ internal fun TitleAndCheckbox(
 internal fun NoneTitleCheckBox(
     isChecked: Boolean,
     event: (Boolean) -> Unit,
-    modifier: Modifier
+    @DrawableRes onImage: Int,
+    @DrawableRes offImage: Int,
+    modifier: Modifier = Modifier
 ) {
-    val bgOnImage = painterResource(id = R.drawable.img_switch_on)
-    val bgOffImage = painterResource(id = R.drawable.img_switch_off)
+    val bgOnImage = painterResource(id = onImage)
+    val bgOffImage = painterResource(id = offImage)
 
     Row(modifier = modifier, Arrangement.End) {
         if (isChecked) {
@@ -100,12 +105,13 @@ internal fun TitleAndSpinner(
                 .weight(1f)
                 .padding(3.dp), text = text, fontSize = 15.sp
         )
-        Spinner(selectValue, textSizeList, event)
+        Spinner(selectValue = selectValue, items =  textSizeList, event = event)
     }
 }
 
 @Composable
 internal fun Spinner(
+    modifier: Modifier = Modifier,
     selectValue: String,
     items: List<String>,
     event: (Int) -> Unit
@@ -114,11 +120,9 @@ internal fun Spinner(
 
     Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(end = 5.dp)) {
         Button(onClick = { isExpanded = true }) {
-            Text(text = selectValue)
+            Text(text = selectValue, overflow = TextOverflow.Ellipsis, modifier = Modifier.sizeIn(maxHeight = 30.dp, maxWidth = 80.dp))
         }
-
         DropdownMenu(
-            modifier = Modifier.height(250.dp),
             expanded = isExpanded,
             onDismissRequest = { isExpanded = false }
         ) {
@@ -176,8 +180,10 @@ internal fun TitleAndLazyColumn(
 
     val scrollState = rememberLazyListState()
 
+    var isExpandable by remember { mutableStateOf(false) }
+
     LaunchedEffect(filterKeywords) {
-        if (filterKeywords.isNotEmpty()) scrollState.animateScrollToItem(0)
+        if (filterKeywords.isNotEmpty()) scrollState.scrollToItem(0)
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -190,7 +196,8 @@ internal fun TitleAndLazyColumn(
             LazyColumn(
                 horizontalAlignment = Alignment.End, modifier = Modifier
                     .height(118.dp)
-                    .width(188.dp), state = scrollState
+                    .width(188.dp),
+                state = scrollState
             ) {
                 items(items = filterKeywords, key = { it.content }) { item ->
                     Row(verticalAlignment = Alignment.CenterVertically) {

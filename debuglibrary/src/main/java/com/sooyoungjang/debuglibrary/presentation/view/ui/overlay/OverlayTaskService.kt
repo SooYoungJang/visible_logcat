@@ -1,29 +1,31 @@
 package com.sooyoungjang.debuglibrary.presentation.view.ui.overlay
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
+import android.graphics.PixelFormat
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.view.*
 import android.widget.*
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.ui.platform.ComposeView
+import androidx.lifecycle.*
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.sooyoungjang.debuglibrary.di.AppContainer
 import com.sooyoungjang.debuglibrary.di.DiManager
+import com.sooyoungjang.debuglibrary.presentation.view.ui.base.MaterialBaseTheme
+import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.view.OverlayTaskScreen
 import com.sooyoungjang.debuglibrary.presentation.view.ui.overlay.viewmodel.OverlayTaskViewModel
-import com.sooyoungjang.debuglibrary.util.Constants
-import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
-import com.sooyoungjang.debuglibrary.presentation.view.model.LogUiModel
+import com.sooyoungjang.debuglibrary.presentation.view.ui.search.SearchActivity
+import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingActivity
+import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingContract
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.distinctUntilChanged
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
 
 @SuppressLint("ClickableViewAccessibility")
-internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
+internal class OverlayTaskService : LifecycleService() {
+    private val windowManager: WindowManager by lazy { getSystemService(WINDOW_SERVICE) as WindowManager }
 
     inner class OverlayDebugToolPopUpBinder : Binder() {
         fun getService(): OverlayTaskService {
@@ -43,19 +45,68 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
     }
 
     private val binder = OverlayDebugToolPopUpBinder()
-    private val view: OverlayTaskView by lazy { OverlayTaskView(context = applicationContext, callback = this) }
 
     private lateinit var unBindCallback: () -> Unit
 
+    private val params: WindowManager.LayoutParams by lazy {
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+        WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            type,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSPARENT
+        )
+    }
+
+    private val composeView: ComposeView by lazy { ComposeView(this) }
+
     override fun onCreate() {
         super.onCreate()
+        EventBus.getDefault().register(this)
+        showOverlay()
+        onClickDelete()
         initObservers()
+    }
+
+    private fun showOverlay() {
+
+        composeView.setContent {
+            MaterialBaseTheme(true) {
+                OverlayTaskScreen(viewModel, ge)
+            }
+        }
+
+        val viewModelStore = ViewModelStore()
+        val lifecycleOwner = OverlayTaskLifecycleOwner()
+        lifecycleOwner.performRestore(null)
+        lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
+
+        val viewModelStoreOwner = object : ViewModelStoreOwner {
+            override val viewModelStore: ViewModelStore
+                get() = viewModelStore
+        }
+
+        composeView.setViewTreeLifecycleOwner(lifecycleOwner)
+        composeView.setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+        composeView.setViewTreeViewModelStoreOwner(viewModelStoreOwner)
+
+        windowManager.addView(composeView, params)
+    }
+
+    private val ge: (Float, Float) -> Unit = { x, y ->
+        params.x = x.toInt()
+        params.y = y.toInt()
+        windowManager.updateViewLayout(composeView, params)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val searchKeyword = intent?.getStringExtra(SEARCH_KEYWORD) ?: ""
-
-        view.onSearchKeyword(searchKeyword)
+        onClickSearch(searchKeyword)
         return super.onStartCommand(intent, flags, startId)
     }
 
@@ -65,23 +116,20 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        view.onDestroyView()
+        windowManager.removeView(composeView)
         return super.onUnbind(intent)
     }
 
     private fun initObservers() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect {
-                    view.setState(it)
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.effect.distinctUntilChanged().collect {
-                    view.setEffect(it)
+                viewModel.effect.collect {
+                    when (it) {
+                        is OverlayTaskContract.SideEffect.Error.NotFoundLog -> makeToast(it.message)
+                        OverlayTaskContract.SideEffect.NavigateToSetting -> navigateToSetting()
+                        OverlayTaskContract.SideEffect.NavigateToSearchIng -> navigateToSearching()
+                        OverlayTaskContract.SideEffect.StopService -> stopService()
+                    }
                 }
             }
         }
@@ -91,15 +139,7 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
         this.unBindCallback = block
     }
 
-    private fun onClickClose() {
-        viewModel.setEvent(OverlayTaskContract.Event.OnCloseClick)
-    }
-
-    private fun onClickTagItem(position: Int) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnKeywordItemClick(position))
-    }
-
-    private fun onLongClickCloseService() {
+    private fun stopService() {
         unBindCallback.invoke()
     }
 
@@ -107,46 +147,48 @@ internal class OverlayTaskService : LifecycleService(), OverlayTaskCallback {
         viewModel.setEvent(OverlayTaskContract.Event.DeleteLog)
     }
 
-    private fun onClickTitle() {
-        viewModel.setEvent(OverlayTaskContract.Event.OnOpenClick)
-    }
-
     private fun onClickBackPressed() {
         viewModel.setEvent(OverlayTaskContract.Event.OnBackPressedClickFromSetting)
     }
 
-    private fun onClickSearch(logUiModels: List<LogUiModel>?,keyword: String) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnSearchClick(logUiModels, keyword))
+    private fun onClickSearch(keyword: String) {
+        viewModel.setEvent(OverlayTaskContract.Event.OnSearchClick(keyword))
     }
 
-    private fun onClickPageUp(logUiModels: List<LogUiModel>?,keyword: String, currentPosition: Int) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnPageUpClick(logUiModels, keyword, currentPosition))
+    private fun navigateToSetting() {
+        windowManager.removeView(composeView)
+
+        val intent = Intent(this, SettingActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
     }
 
-    private fun onClickPageDown(logUiModels: List<LogUiModel>?,keyword: String, currentPosition: Int) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnPageDownClick(logUiModels,keyword, currentPosition))
+    private fun navigateToSearching() {
+        val intent = Intent(this, SearchActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
     }
 
-    private fun onCollectLog(keyword: String) {
-        viewModel.setEvent(OverlayTaskContract.Event.OnCollectLog(keyword))
+
+    @Subscribe
+    fun settingEventHandler(event: SettingContract.SideEffect) {
+        when (event) {
+            SettingContract.SideEffect.OnBackPressed -> {
+                windowManager.addView(composeView, params)
+                onClickBackPressed()
+            }
+        }
+    }
+
+    private fun makeToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        view.onDestroyView()
+        EventBus.getDefault().unregister(this)
         stopSelf()
     }
-
-    override val onClickOpen: () -> Unit = ::onClickTitle
-    override val onClickClose: () -> Unit = ::onClickClose
-    override val onClickTagItem: (position: Int) -> Unit = ::onClickTagItem
-    override val onCollectLog: (keyword: String) -> Unit = ::onCollectLog
-    override val onClickBackPressed: () -> Unit = ::onClickBackPressed
-    override val onLongClickCloseService: () -> Unit = ::onLongClickCloseService
-    override val onClickDelete: () -> Unit = ::onClickDelete
-    override val onClickSearch: (logUiModels: List<LogUiModel>?, keyword: String) -> Unit = ::onClickSearch
-    override val onClickPageUp: (logUiModels: List<LogUiModel>?, keyword: String, currentPosition: Int) -> Unit = ::onClickPageUp
-    override val onClickPageDown: (logUiModels: List<LogUiModel>?, keyword: String, currentPosition: Int) -> Unit = ::onClickPageDown
 
     companion object {
         const val SEARCH_KEYWORD = "Search Keyword"

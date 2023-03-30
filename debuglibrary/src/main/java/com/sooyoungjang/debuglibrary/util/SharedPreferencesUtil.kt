@@ -29,7 +29,7 @@ class SharedPreferencesUtil(
 
     fun putFilterKeyword(keyword: String) {
         val keywords = getFilterKeywordList().toMutableList()
-        if (!keywords.contains(keyword)) {
+        if (!keywords.contains(keyword) && keyword.isNotBlank()) {
             keywords.add(0, keyword)
 
             val result = GsonBuilder().create().toJson(

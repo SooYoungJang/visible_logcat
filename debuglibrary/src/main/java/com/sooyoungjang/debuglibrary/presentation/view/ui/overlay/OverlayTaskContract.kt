@@ -11,13 +11,17 @@ internal class OverlayTaskContract {
         object OnOpenClick: Event
         object OnCloseClick: Event
         object OnClearClick: Event
+        object OnCloseLongClick: Event
         object DeleteLog: Event
+        data class OnZoomLog(val isZoom: Boolean): Event
         data class OnCollectLog(val keyword: String): Event
         data class OnKeywordItemClick(val position: Int) : Event
+        object OnNavigateToSetting: Event
+        object OnNavigateToSearchIng: Event
         object OnBackPressedClickFromSetting : Event
-        data class OnSearchClick(val logUiModels: List<LogUiModel>?, val keyword: String): Event
-        data class OnPageUpClick(val logUiModels: List<LogUiModel>?, val keyword:String, val currentPosition: Int): Event
-        data class OnPageDownClick(val logUiModels: List<LogUiModel>?, val keyword: String, val currentPosition: Int): Event
+        data class OnSearchClick(val keyword: String): Event
+        data class OnPageUpClick(val keyword:String, val currentPosition: Int): Event
+        data class OnPageDownClick(val keyword: String, val currentPosition: Int): Event
     }
 
     data class State(
@@ -28,16 +32,19 @@ internal class OverlayTaskContract {
         val filterKeywordList: List<String>,
         val filterKeywordTitle: String,
         val searching: Boolean,
+        val searchKeyword: String,
         val searchLayout: Boolean,
         val trash: Boolean,
         val zoom: Boolean,
-        val zoomChecked: Boolean,
+        val zoomHeight: Int,
         val move: Boolean,
         val close: Boolean,
         val log: Boolean,
         val logTitle: String,
         val keywordSelectedPosition: Int,
         val backgroundColor: Int,
+        val logs : List<LogUiModel>,
+        val scrollPosition: Int
     ) : UiState {
         companion object Factory {
             fun idle(): State {
@@ -54,11 +61,14 @@ internal class OverlayTaskContract {
                     move = true,
                     close = false,
                     expandView = false,
-                    zoomChecked = false,
+                    zoomHeight = 300,
                     log = false,
                     logTitle = "log",
                     keywordSelectedPosition = 0,
                     backgroundColor = 0,
+                    logs = listOf(),
+                    scrollPosition = 0,
+                    searchKeyword = ""
                 )
             }
         }
@@ -66,10 +76,9 @@ internal class OverlayTaskContract {
 
 
     sealed interface SideEffect : UiEffect {
-        data class FetchLogs(val logs : List<LogUiModel>): SideEffect
-        data class SearchLog(val keyword: String, val position: Int): SideEffect
-        data class ScrollPosition(val position: Int): SideEffect
-        data class BackPressed(val filterKeywordList: List<String>, val backgroundColor: Int): SideEffect
+        object NavigateToSetting: SideEffect
+        object NavigateToSearchIng: SideEffect
+        object StopService: SideEffect
 
         sealed interface Error: SideEffect {
             data class NotFoundLog(val message: String): Error
