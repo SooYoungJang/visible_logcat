@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -12,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,10 +21,9 @@ import com.example.debuglibrary.R
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.SettingContract
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.model.LogKeywordModel
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.viewmodel.SettingViewModel
-import kotlinx.coroutines.launch
 
 @Composable
-internal fun SettingScreenRoute(
+internal fun SettingScreen(
     modifier: Modifier = Modifier,
     viewModel: SettingViewModel
 ) {
@@ -57,7 +58,7 @@ internal fun TitleAndCheckbox(
         Text(
             modifier = Modifier
                 .weight(1f)
-                .padding(3.dp), text = text, fontSize = 15.sp
+                .padding(3.dp), text = text, fontSize = 15.sp,
         )
         NoneTitleCheckBox(
             isChecked, event, modifier = Modifier
@@ -122,17 +123,16 @@ internal fun Spinner(
             onDismissRequest = { isExpanded = false }
         ) {
             items.forEachIndexed { index, item ->
-                DropdownMenuItem(onClick = {
+                DropdownMenuItem(text = { Text(text = item) }, onClick = {
                     event.invoke(index)
                     isExpanded = false
-                }) {
-                    Text(text = item)
-                }
+                })
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TitleAndEditTextAndImageButton(
     text: String,
@@ -187,7 +187,11 @@ internal fun TitleAndLazyColumn(
                 .padding(3.dp), text = text, fontSize = 15.sp
         )
         Surface(color = colorResource(id = R.color.transparent_gray)) {
-            LazyColumn(horizontalAlignment = Alignment.End, modifier = Modifier.height(118.dp).width(188.dp), state = scrollState) {
+            LazyColumn(
+                horizontalAlignment = Alignment.End, modifier = Modifier
+                    .height(118.dp)
+                    .width(188.dp), state = scrollState
+            ) {
                 items(items = filterKeywords, key = { it.content }) { item ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(text = item.content, textAlign = TextAlign.Center, modifier = Modifier.padding(end = 5.dp))

@@ -1,16 +1,16 @@
 package com.sooyoungjang.debuglibrary.presentation.view.ui.setting
 
-import SettingScreenRoute
+import SettingScreen
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material.Surface
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.debuglibrary.R
 import com.sooyoungjang.debuglibrary.di.AppContainer
+import com.sooyoungjang.debuglibrary.presentation.view.ui.base.MaterialBaseTheme
 import com.sooyoungjang.debuglibrary.presentation.view.ui.setting.viewmodel.SettingViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -26,9 +26,9 @@ internal class SettingActivity : AppCompatActivity() {
         supportActionBar?.title = getString(R.string.setting)
 
         setContent {
-                Surface {
-                    SettingScreenRoute(viewModel = viewModel)
-                }
+            MaterialBaseTheme(isDynamicColor = true) {
+                SettingScreen(viewModel = viewModel)
+            }
         }
         initObservers()
     }
