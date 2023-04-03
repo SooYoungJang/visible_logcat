@@ -27,7 +27,7 @@ class SearchActivity : AppCompatActivity() {
             .setView(editText)
             .setPositiveButton("확인") { dialog, which ->
                 val intent = Intent(this, OverlayTaskService::class.java)
-                intent.putExtra(SEARCH_KEYWORD,editText.text.toString())
+                intent.putExtra(SEARCH_KEYWORD, editText.text.toString())
                 startService(intent)
 
                 finish()

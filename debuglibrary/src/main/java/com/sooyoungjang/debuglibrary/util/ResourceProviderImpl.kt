@@ -13,11 +13,11 @@ class ResourceProviderImpl (
     }
 
     override fun getScreenWidth(): Int {
-        return resources.displayMetrics.widthPixels
+        return resources.configuration.screenWidthDp
     }
 
     override fun getScreenHeight(): Int {
-        return resources.displayMetrics.heightPixels
+        return resources.configuration.screenHeightDp
     }
 
     override fun getString(@StringRes resId: Int): String {

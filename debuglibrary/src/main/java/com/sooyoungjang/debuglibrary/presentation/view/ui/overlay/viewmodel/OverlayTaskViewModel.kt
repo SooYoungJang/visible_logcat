@@ -35,14 +35,17 @@ internal class OverlayTaskViewModel(
             is OverlayTaskContract.Event.OnCollectLog -> requestLogcats(event.keyword)
             is OverlayTaskContract.Event.OnKeywordItemClick -> selectKeyword(event.position)
             is OverlayTaskContract.Event.OnBackPressedClickFromSetting -> backPressedEvent()
-            is OverlayTaskContract.Event.OnSearchClick -> searchLog(event.logUiModels, event.keyword)
-            is OverlayTaskContract.Event.OnPageUpClick -> searchLogPageUp(event.logUiModels, event.keyword, event.currentPosition)
-            is OverlayTaskContract.Event.OnPageDownClick -> searchLogPageDown(event.logUiModels, event.keyword, event.currentPosition)
+            is OverlayTaskContract.Event.OnSearchClick -> searchLog(event.keyword)
+            is OverlayTaskContract.Event.OnPageUpClick -> searchLogPageUp(event.keyword, event.currentPosition)
+            is OverlayTaskContract.Event.OnPageDownClick -> searchLogPageDown(event.keyword, event.currentPosition)
+            is OverlayTaskContract.Event.OnZoomLog -> onZoomLog(event.isZoom)
             OverlayTaskContract.Event.OnOpenClick -> expandView()
             OverlayTaskContract.Event.OnCloseClick -> setState { OverlayTaskContract.State.idle() }
+            OverlayTaskContract.Event.OnCloseLongClick -> stopService()
             OverlayTaskContract.Event.OnClearClick -> clearLog()
             OverlayTaskContract.Event.DeleteLog -> deleteLog()
-
+            OverlayTaskContract.Event.OnNavigateToSetting -> navigateToSetting()
+            OverlayTaskContract.Event.OnNavigateToSearchIng -> navigateToSearchIng()
         }
     }
 
@@ -55,7 +58,7 @@ internal class OverlayTaskViewModel(
             getLogcatUseCase.invoke(params)
                 .map { it.map { LogUiModel(it.content, it.logLevel) } }
                 .collect {
-                    setEffect { OverlayTaskContract.SideEffect.FetchLogs(it) }
+                    setState { copy(logs = it) }
                 }
         }
     }
@@ -77,6 +80,9 @@ internal class OverlayTaskViewModel(
         val keywords = sharedPreferencesUtil.getFilterKeywordList()
         val isDarkBackgroundColor = sharedPreferencesUtil.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND)
         val backgroundColor = if (isDarkBackgroundColor) R.color.default_app_color else R.color.transparent_gray
+        val zoomHeight = (resourceProvider.getScreenHeight() / 3.5).toInt()
+
+        requestLogcats(keywords.first())
 
         setState {
             copy(
@@ -86,10 +92,10 @@ internal class OverlayTaskViewModel(
                 filterKeyword = true,
                 filterKeywordList = keywords,
                 filterKeywordTitle = keywords.first(),
-                searching = true,
+                searching = false,
                 trash = true,
                 zoom = true,
-                zoomChecked = false,
+                zoomHeight = zoomHeight,
                 move = true,
                 close = true,
                 log = true,
@@ -98,37 +104,40 @@ internal class OverlayTaskViewModel(
         }
     }
 
-    private fun searchLog(logUiModels: List<LogUiModel>?, keyword: String) {
+    private fun searchLog(keyword: String) {
         try {
             if (keyword.isBlank()) throw IllegalStateException("pls, input keyword")
-            val uiModels = logUiModels?.withIndex()?.filter { it.value.content.contains(keyword, true) }
-            val position = uiModels?.first()?.index ?: throw IllegalStateException("Not found.")
+            val uiModels = currentState.logs.withIndex().filter { it.value.content.contains(keyword, true) }
+            val position = uiModels.firstOrNull()?.index ?: throw IllegalStateException("keyword is not found")
 
-            setEffect { OverlayTaskContract.SideEffect.SearchLog(keyword, position = position) }
+            setState { copy(scrollPosition = position, searching = true, searchKeyword = keyword) }
         } catch (e: Exception) {
             setEffect { OverlayTaskContract.SideEffect.Error.NotFoundLog(e.message.toString()) }
         }
     }
 
-    private fun searchLogPageUp(logUiModels: List<LogUiModel>?, keyword: String, currentPosition: Int) {
+    private fun searchLogPageUp(keyword: String, currentPosition: Int) {
         try {
-            if (keyword.isBlank()) throw IllegalStateException("pls, input keyword")
-            val uiModels = logUiModels?.withIndex()?.filter { it.value.content.contains(keyword) }
-            val position = uiModels?.findLast { it.index < currentPosition }?.index ?: throw IllegalStateException("Not found or The end has been reached.")
 
-            setEffect { OverlayTaskContract.SideEffect.ScrollPosition(position) }
+            if (keyword.isBlank()) throw IllegalStateException("pls, input keyword")
+            val uiModels = currentState.logs.withIndex().filter { it.value.content.contains(keyword, true) }
+            val position = uiModels.findLast {
+                it.index < currentPosition }?.index ?: throw IllegalStateException("Not found or The end has been reached.")
+
+            setState { copy(scrollPosition = position) }
         } catch (e: Exception) {
             setEffect { OverlayTaskContract.SideEffect.Error.NotFoundLog(e.message.toString()) }
         }
     }
 
-    private fun searchLogPageDown(logUiModels: List<LogUiModel>?, keyword: String, currentPosition: Int) {
+    private fun searchLogPageDown(keyword: String, currentPosition: Int) {
         try {
             if (keyword.isBlank()) throw IllegalStateException("pls, input keyword")
-            val uiModels = logUiModels?.withIndex()?.filter { it.value.content.contains(keyword) }
-            val position = uiModels?.find { it.index > currentPosition }?.index ?: throw IllegalStateException("Not found or The end has been reached.")
+            val uiModels = currentState.logs.withIndex().filter { it.value.content.contains(keyword, true) }
+            val position = uiModels.find {
+                it.index > currentPosition }?.index ?: throw IllegalStateException("Not found or The end has been reached.")
 
-            setEffect { OverlayTaskContract.SideEffect.ScrollPosition(position) }
+            setState { copy(scrollPosition = position) }
         } catch (e: Exception) {
             setEffect { OverlayTaskContract.SideEffect.Error.NotFoundLog(e.message.toString()) }
         }
@@ -140,7 +149,26 @@ internal class OverlayTaskViewModel(
         val keywords = sharedPreferencesUtil.getFilterKeywordList()
         requestLogcats(keywords.first())
 
-        setEffect { OverlayTaskContract.SideEffect.BackPressed(filterKeywordList = keywords, backgroundColor = backgroundColor) }
+        setState { copy(filterKeywordList = keywords, filterKeywordTitle = keywords.first(), backgroundColor = backgroundColor) }
+    }
+
+    private fun navigateToSetting() {
+        setEffect { OverlayTaskContract.SideEffect.NavigateToSetting }
+    }
+
+    private fun navigateToSearchIng() {
+        setEffect { OverlayTaskContract.SideEffect.NavigateToSearchIng }
+    }
+
+    private fun onZoomLog(isZoom: Boolean) {
+
+        val height = if (isZoom.not()) {
+            (resourceProvider.getScreenHeight() / 1.5).toInt()
+        } else {
+            (resourceProvider.getScreenHeight() / 3.5).toInt()
+        }
+
+        setState { copy(zoom = isZoom, zoomHeight = height) }
     }
 
     private fun clearLog() {
@@ -153,6 +181,10 @@ internal class OverlayTaskViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             deleteLogUseCase.run(Unit)
         }
+    }
+
+    private fun stopService() {
+        setEffect { OverlayTaskContract.SideEffect.StopService }
     }
 
     private fun cancelJob() {
