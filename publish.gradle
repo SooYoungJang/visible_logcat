@@ -1,6 +1,5 @@
-
+//
 ext {
-
     PUBLISH_DESCRIPTION = 'Android library for visible logcat and more.'
     PUBLISH_URL = 'https://github.com/SooYoungJang/visible_logcat'
     PUBLISH_LICENSE_NAME = 'Apache Licensee 2.0'
