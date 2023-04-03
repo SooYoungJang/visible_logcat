@@ -10,11 +10,9 @@ internal class OverlayTaskContract {
     sealed interface Event : UiEvent {
         object OnOpenClick: Event
         object OnCloseClick: Event
-        object OnClearClick: Event
         object OnCloseLongClick: Event
         object DeleteLog: Event
         data class OnZoomLog(val isZoom: Boolean): Event
-        data class OnCollectLog(val keyword: String): Event
         data class OnKeywordItemClick(val position: Int) : Event
         object OnNavigateToSetting: Event
         object OnNavigateToSearchIng: Event

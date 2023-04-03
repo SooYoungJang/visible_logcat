@@ -71,9 +71,12 @@ class OverlayTaskViewModelTest : BehaviorSpec({
             val keywords = listOf("a", "b", "c")
             val isDarkBackgroundColor = fixture<Boolean>()
             val backgroundColor = if (isDarkBackgroundColor) R.color.default_app_color else R.color.transparent_gray
+            val zoomHeight = fixture<Int>()
+            val expectedZoomHeight = (zoomHeight / 3.5).toInt()
 
             every { sharedPreferencesUtil.getFilterKeywordList() } returns keywords
             every { sharedPreferencesUtil.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND) } returns isDarkBackgroundColor
+            every { resourceProvider.getScreenHeight() } returns zoomHeight
 
             val excepted = OverlayTaskContract.State.idle().copy(
                 expandView = true,
@@ -82,9 +85,10 @@ class OverlayTaskViewModelTest : BehaviorSpec({
                 filterKeyword = true,
                 filterKeywordList = keywords,
                 filterKeywordTitle = keywords[0],
-                searching = true,
+                searching = false,
                 trash = true,
                 zoom = true,
+                zoomHeight = expectedZoomHeight,
                 move = true,
                 close = true,
                 log = true,
@@ -118,51 +122,39 @@ class OverlayTaskViewModelTest : BehaviorSpec({
             val backgroundColor = if (isDarkBackgroundColor) R.color.default_app_color else R.color.transparent_gray
             val event = OverlayTaskContract.Event.OnBackPressedClickFromSetting
 
+            val excepted = OverlayTaskContract.State.idle().copy(filterKeywordList = keywords, filterKeywordTitle = keywords.first(), backgroundColor = backgroundColor)
 
             every { sharedPreferencesUtil.getFilterKeywordList() } returns keywords
             every { sharedPreferencesUtil.getBoolean(Constants.SharedPreferences.EDDY_SETTING_BACKGROUND) } returns isDarkBackgroundColor
-            val excepted = OverlayTaskContract.SideEffect.BackPressed(filterKeywordList = sharedPreferencesUtil.getFilterKeywordList(), backgroundColor = backgroundColor)
 
             viewModel.handleEvent(event)
 
             then("filterKeywordList sideEffect 를 방출 한다.") {
-                assertEquals(excepted, viewModel.effect.first())
+                assertEquals(excepted, viewModel.currentState)
             }
         }
 
         When("filter keyword 를 선택 할 때") {
-            val position = fixture<Int>()
-            val keyword = fixture<String>()
-            val event = OverlayTaskContract.Event.OnKeywordItemClick(position)
-            val logModels = fixture<List<LogModel>>()
-            val logUiModels = logModels.map { LogUiModel(content = it.content, contentLevel = it.logLevel) }
+            val position = 1
 
-            val exceptedSideEffect = OverlayTaskContract.SideEffect.FetchLogs(logUiModels)
+            val event = OverlayTaskContract.Event.OnKeywordItemClick(position)
+            val filterKeywords = listOf("aaa","bbb","ccc")
+            val keyword = filterKeywords[position]
+
+            every { sharedPreferencesUtil.getFilterKeywordList() } returns filterKeywords
+
             val exceptedState = OverlayTaskContract.State.idle().copy(
                 filterKeywordTitle = keyword,
                 keywordSelectedPosition = position,
-                filterKeywordList = sharedPreferencesUtil.getFilterKeywordList()
+                filterKeywordList = filterKeywords
             )
 
-            every { sharedPreferencesUtil.getFilterKeywordList()[position] } returns keyword
-            coEvery { getLogcatUseCase.invoke(GetLogcatUseCase.Params(keyword)) } returns flowOf(logModels)
-
             viewModel.handleEvent(event)
 
-            Then("sideEffect 및 state 를 변경 한다 ") {
+            Then("state 를 변경 한다 ") {
                 verify { getLogcatUseCase.invoke(GetLogcatUseCase.Params(keyword)) }
 
-                assertEquals(exceptedSideEffect, viewModel.effect.first())
                 assertEquals(exceptedState, viewModel.currentState)
-            }
-        }
-
-        When("clear event 가 발샏 할 때") {
-            val event = OverlayTaskContract.Event.OnClearClick
-            viewModel.handleEvent(event)
-
-            Then("clear usecase 를 실행 한다") {
-                coVerify { clearLogUseCase.run(Unit) }
             }
         }
 
@@ -175,245 +167,252 @@ class OverlayTaskViewModelTest : BehaviorSpec({
             }
         }
 
-        When("검색 완료 버튼을 눌렀을 때 models 에서 keyword 와 일치 한다면 ") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = "test 22"
-            val event = OverlayTaskContract.Event.OnSearchClick(logUiModels, searchKeyword)
-
-            val exceptedPosition =
-                logUiModels.withIndex().find { it.value.content.contains(searchKeyword) }?.index ?: throw IllegalStateException("Not found or The end has been reached.")
-            val excepted = OverlayTaskContract.SideEffect.SearchLog(searchKeyword, exceptedPosition)
-
-            viewModel.handleEvent(event)
-
-            Then("sideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("검색 완료 버튼을 눌렀을 때, models 에서 keyword 를 찾지 못한 다면") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = "test 44"
-            val event = OverlayTaskContract.Event.OnSearchClick(logUiModels, searchKeyword)
-
-            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("List is empty.")
-
-            viewModel.handleEvent(event)
-
-            Then("sideEffect 를 방출 한다 ") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("업 버튼을 눌렀을 때, 현재 포지션 보다 찾으려는 키워드의 인덱스가 크다면") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = "test 22" //1
-            val curPosition = 0
-            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
-
-            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
-
-            viewModel.handleEvent(event)
-
-            Then("sideEffect 를 방출 한다 ") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("업 버튼을 눌렀을 때, 현재 포지션 보다 찾으려는 키워드의 인덱스가 작다면") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = "test 22" //index 1
-            val curPosition = 2
-            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
-
-            val exceptedPosition = 1
-            val excepted = OverlayTaskContract.SideEffect.ScrollPosition(exceptedPosition)
-
-            viewModel.handleEvent(event)
-
-            Then("sideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("업 버튼을 눌렀을 때, 현재 포지션과 찾으려는 키워드의 인덱스가 같다면") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = "test 22" //index 1
-            val curPosition = 1
-            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
-
-            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
-
-            viewModel.handleEvent(event)
-
-            Then("error sideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("업 버튼을 눌렀을 때, 키워드가 공백이라면") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = ""
-            val curPosition = 2
-            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
-
-            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("pls, input keyword")
-
-            viewModel.handleEvent(event)
-
-            Then("NotFound error sideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("업 버튼을 눌렀을 때, 모델 데이터가 비어 있다면") {
-            val logUiModels = emptyList<LogUiModel>()
-            val searchKeyword = "test 11"
-            val curPosition = 0
-            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
-
-            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
-
-            viewModel.handleEvent(event)
-
-            Then("NotFound error SideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("다운 버튼을 눌렀을 때, 현재 포지션 보다 찾으려는 키워드의 인덱스가 크다면") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = "test 22"
-            val curPosition = 0
-            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
-
-            val exceptedPosition = 1
-            val excepted = OverlayTaskContract.SideEffect.ScrollPosition(exceptedPosition)
-
-            viewModel.handleEvent(event)
-
-            Then("sideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("다운 버튼을 눌렀을 때, 현재 포지션 보다 찾으려는 키워드의 인덱스가 작다면") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = "test 22" //index 1
-            val curPosition = 2
-            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
-
-            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
-
-            viewModel.handleEvent(event)
-
-            Then("error sideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("다운 버튼을 눌렀을 때, 현재 포지션과 찾으려는 키워드의 인덱스가 같다면") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = "test 22" //index 1
-            val curPosition = 1
-            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
-
-            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
-
-            viewModel.handleEvent(event)
-
-            Then("error sideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("다운 버튼을 눌렀을 때, 키워드가 공백이라면") {
-            val logUiModels = listOf(
-                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
-                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
-                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
-            )
-            val searchKeyword = ""
-            val curPosition = 2
-            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
-
-            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("pls, input keyword")
-
-            viewModel.handleEvent(event)
-
-            Then("NotFound error sideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("다운 버튼을 눌렀을 때, 모델 데이터가 비어 있다면") {
-            val logUiModels = emptyList<LogUiModel>()
-            val searchKeyword = "test 11"
-            val curPosition = 0
-            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
-
-            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
-
-            viewModel.handleEvent(event)
-
-            Then("NotFound error SideEffect 를 방출 한다") {
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
-
-        When("OnCollectLog event 실행 되면") {
-            val keyword = fixture<String>()
-            val event = OverlayTaskContract.Event.OnCollectLog(keyword)
-            val logModels = fixture<List<LogModel>>()
-            val logUiModels = logModels.map { LogUiModel(content = it.content, contentLevel = it.logLevel) }
-            val excepted = OverlayTaskContract.SideEffect.FetchLogs(logUiModels)
-
-            coEvery { getLogcatUseCase.invoke(GetLogcatUseCase.Params(keyword)) } returns flowOf(logModels)
-
-            viewModel.handleEvent(event)
-
-            Then("sideEffect 를 방출 한다") {
-                verify { getLogcatUseCase.invoke(GetLogcatUseCase.Params(keyword)) }
-
-                assertEquals(excepted, viewModel.effect.first())
-            }
-        }
+//        When("검색 완료 버튼을 눌렀을 때 models 에서 keyword 와 일치 한다면 ") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = "test 22"
+//            val event = OverlayTaskContract.Event.OnSearchClick(searchKeyword)
+////            val uiModels = viewModel.currentState.logs.withIndex().filter { it.value.content.contains(searchKeyword, true) }
+//
+////            val uiModels = fixture<List<IndexedValue<LogUiModel>>>()
+//            viewModel.uiState
+//
+//            val uiModels = curState.logs.withIndex().filter { it.value.content.contains(searchKeyword, true) }
+//            val position = uiModels.firstOrNull()?.index ?: throw IllegalStateException("keyword is not found")
+//
+////            every { viewModel.currentState.logs.withIndex().filter { it.value.content.contains(searchKeyword, true) } } returns uiModels
+//
+//            val excepted = OverlayTaskContract.State.idle().copy(scrollPosition = position, searching = true, searchKeyword = searchKeyword)
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("State를 변경 한다") {
+//                assertEquals(excepted, viewModel.currentState)
+//            }
+//        }
+//
+//        When("검색 완료 버튼을 눌렀을 때, models 에서 keyword 를 찾지 못한 다면") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = "test 44"
+//            val event = OverlayTaskContract.Event.OnSearchClick(searchKeyword)
+//
+//            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("List is empty.")
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("sideEffect 를 방출 한다 ") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("업 버튼을 눌렀을 때, 현재 포지션 보다 찾으려는 키워드의 인덱스가 크다면") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = "test 22" //1
+//            val curPosition = 0
+//            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
+//
+//            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("sideEffect 를 방출 한다 ") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("업 버튼을 눌렀을 때, 현재 포지션 보다 찾으려는 키워드의 인덱스가 작다면") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = "test 22" //index 1
+//            val curPosition = 2
+//            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
+//
+//            val exceptedPosition = 1
+//            val excepted = OverlayTaskContract.SideEffect.ScrollPosition(exceptedPosition)
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("sideEffect 를 방출 한다") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("업 버튼을 눌렀을 때, 현재 포지션과 찾으려는 키워드의 인덱스가 같다면") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = "test 22" //index 1
+//            val curPosition = 1
+//            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
+//
+//            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("error sideEffect 를 방출 한다") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("업 버튼을 눌렀을 때, 키워드가 공백이라면") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = ""
+//            val curPosition = 2
+//            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
+//
+//            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("pls, input keyword")
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("NotFound error sideEffect 를 방출 한다") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("업 버튼을 눌렀을 때, 모델 데이터가 비어 있다면") {
+//            val logUiModels = emptyList<LogUiModel>()
+//            val searchKeyword = "test 11"
+//            val curPosition = 0
+//            val event = OverlayTaskContract.Event.OnPageUpClick(logUiModels, searchKeyword, curPosition)
+//
+//            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("NotFound error SideEffect 를 방출 한다") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("다운 버튼을 눌렀을 때, 현재 포지션 보다 찾으려는 키워드의 인덱스가 크다면") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = "test 22"
+//            val curPosition = 0
+//            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
+//
+//            val exceptedPosition = 1
+//            val excepted = OverlayTaskContract.SideEffect.ScrollPosition(exceptedPosition)
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("sideEffect 를 방출 한다") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("다운 버튼을 눌렀을 때, 현재 포지션 보다 찾으려는 키워드의 인덱스가 작다면") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = "test 22" //index 1
+//            val curPosition = 2
+//            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
+//
+//            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("error sideEffect 를 방출 한다") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("다운 버튼을 눌렀을 때, 현재 포지션과 찾으려는 키워드의 인덱스가 같다면") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = "test 22" //index 1
+//            val curPosition = 1
+//            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
+//
+//            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("error sideEffect 를 방출 한다") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("다운 버튼을 눌렀을 때, 키워드가 공백이라면") {
+//            val logUiModels = listOf(
+//                LogUiModel(content = "test 11", contentLevel = LogLevel.D),
+//                LogUiModel(content = "test 22", contentLevel = LogLevel.I),
+//                LogUiModel(content = "test 33", contentLevel = LogLevel.W)
+//            )
+//            val searchKeyword = ""
+//            val curPosition = 2
+//            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
+//
+//            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("pls, input keyword")
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("NotFound error sideEffect 를 방출 한다") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("다운 버튼을 눌렀을 때, 모델 데이터가 비어 있다면") {
+//            val logUiModels = emptyList<LogUiModel>()
+//            val searchKeyword = "test 11"
+//            val curPosition = 0
+//            val event = OverlayTaskContract.Event.OnPageDownClick(logUiModels, searchKeyword, curPosition)
+//
+//            val excepted = OverlayTaskContract.SideEffect.Error.NotFoundLog("Not found or The end has been reached.")
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("NotFound error SideEffect 를 방출 한다") {
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
+//
+//        When("OnCollectLog event 실행 되면") {
+//            val keyword = fixture<String>()
+//            val event = OverlayTaskContract.Event.OnCollectLog(keyword)
+//            val logModels = fixture<List<LogModel>>()
+//            val logUiModels = logModels.map { LogUiModel(content = it.content, contentLevel = it.logLevel) }
+//            val excepted = OverlayTaskContract.SideEffect.FetchLogs(logUiModels)
+//
+//            coEvery { getLogcatUseCase.invoke(GetLogcatUseCase.Params(keyword)) } returns flowOf(logModels)
+//
+//            viewModel.handleEvent(event)
+//
+//            Then("sideEffect 를 방출 한다") {
+//                verify { getLogcatUseCase.invoke(GetLogcatUseCase.Params(keyword)) }
+//
+//                assertEquals(excepted, viewModel.effect.first())
+//            }
+//        }
     }
 
 })

@@ -32,7 +32,6 @@ internal class OverlayTaskViewModel(
 
     override fun handleEvent(event: OverlayTaskContract.Event) {
         when (event) {
-            is OverlayTaskContract.Event.OnCollectLog -> requestLogcats(event.keyword)
             is OverlayTaskContract.Event.OnKeywordItemClick -> selectKeyword(event.position)
             is OverlayTaskContract.Event.OnBackPressedClickFromSetting -> backPressedEvent()
             is OverlayTaskContract.Event.OnSearchClick -> searchLog(event.keyword)
@@ -42,7 +41,6 @@ internal class OverlayTaskViewModel(
             OverlayTaskContract.Event.OnOpenClick -> expandView()
             OverlayTaskContract.Event.OnCloseClick -> setState { OverlayTaskContract.State.idle() }
             OverlayTaskContract.Event.OnCloseLongClick -> stopService()
-            OverlayTaskContract.Event.OnClearClick -> clearLog()
             OverlayTaskContract.Event.DeleteLog -> deleteLog()
             OverlayTaskContract.Event.OnNavigateToSetting -> navigateToSetting()
             OverlayTaskContract.Event.OnNavigateToSearchIng -> navigateToSearchIng()
@@ -64,14 +62,15 @@ internal class OverlayTaskViewModel(
     }
 
     private fun selectKeyword(position: Int) {
-        val keyword = sharedPreferencesUtil.getFilterKeywordList()[position]
+        val keywords = sharedPreferencesUtil.getFilterKeywordList()
+        val keyword = keywords[position]
         requestLogcats(keyword)
 
         setState {
             copy(
                 filterKeywordTitle = keyword,
                 keywordSelectedPosition = position,
-                filterKeywordList = sharedPreferencesUtil.getFilterKeywordList()
+                filterKeywordList = keywords
             )
         }
     }
